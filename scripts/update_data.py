@@ -51,12 +51,19 @@ def warn(msg):
 
 
 # ---------------------------------------------------------------- сеть
-def http_json(url, post=None, timeout=240, tries=3):
+BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+              "Chrome/131.0.0.0 Safari/537.36")
+
+
+def http_json(url, post=None, timeout=240, tries=3, browser=False):
     last = None
     for attempt in range(tries):
         try:
             data = urllib.parse.urlencode(post).encode() if post else None
-            req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, "Accept": "application/json"})
+            headers = {"User-Agent": BROWSER_UA if browser else UA, "Accept": "application/json"}
+            if browser:
+                headers.update({"Accept-Language": "ru-RU,ru;q=0.9", "Referer": "https://kudago.com/msk/"})
+            req = urllib.request.Request(url, data=data, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
@@ -164,7 +171,7 @@ Q_METRO = """[out:json][timeout:120];
 (
   node(area.a)["railway"="station"]["station"~"^(subway|light_rail|monorail)$"]["name"];
 );
-out tags;""" % Q_AREA
+out body;""" % Q_AREA
 
 AMENITY = {"restaurant": "restaurant", "cafe": "cafe", "bar": "bar", "pub": "bar", "food_court": "market",
            "cinema": "cinema", "theatre": "theatre", "arts_centre": "arts", "planetarium": "planetarium",
@@ -355,7 +362,7 @@ def kg_pages(path, params, max_pages):
     url = "%s/%s/?%s" % (KUDAGO, path, urllib.parse.urlencode(params))
     out, pages = [], 0
     while url and pages < max_pages:
-        res = http_json(url.replace("http://", "https://"), timeout=60)
+        res = http_json(url.replace("http://", "https://"), timeout=60, browser=True)
         out.extend(res.get("results") or [])
         url = res.get("next")
         pages += 1
