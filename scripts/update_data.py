@@ -24,7 +24,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "places.json")
-UA = "evening-generator/1.0 (личный некоммерческий проект, GitHub Pages)"
+UA = "evening-generator/1.0 (personal non-commercial project; https://github.com/Den3d-droid/vecher)"
 
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
