@@ -5,7 +5,7 @@
 
 Источники:
   * OpenStreetMap (через Overpass API) — места, адреса, часы работы, метро.
-  * KudaGo (public-api) — отобранные редакцией места и афиша событий.
+  * Афиша mos.ru — события на ближайшие дни с ценами, площадками и метро.
 
 Результат: data/places.json. Скрипту не нужны ни ключи, ни сторонние библиотеки.
 Если какой-то источник не ответил, остаются прежние данные — сайт не ломается.
@@ -32,10 +32,10 @@ OVERPASS_URLS = [
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 ]
-KUDAGO = "https://kudago.com/public-api/v1.4"
+MOS_AFISHA = "https://www.mos.ru/api/newsfeed/v4/frontend/json/ru/afisha"
 
 EVENT_DAYS = 10          # на сколько дней вперёд брать афишу
-MAX_EVENTS = 500
+MAX_EVENTS = 1500
 # сколько лучших мест оставлять в каждой категории
 LIMITS = {"restaurant": 1500, "cafe": 1200, "bar": 700}
 DEFAULT_LIMIT = 600
@@ -51,19 +51,12 @@ def warn(msg):
 
 
 # ---------------------------------------------------------------- сеть
-BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-              "Chrome/131.0.0.0 Safari/537.36")
-
-
-def http_json(url, post=None, timeout=240, tries=3, browser=False):
+def http_json(url, post=None, timeout=240, tries=3):
     last = None
     for attempt in range(tries):
         try:
             data = urllib.parse.urlencode(post).encode() if post else None
-            headers = {"User-Agent": BROWSER_UA if browser else UA, "Accept": "application/json"}
-            if browser:
-                headers.update({"Accept-Language": "ru-RU,ru;q=0.9", "Referer": "https://kudago.com/msk/"})
-            req = urllib.request.Request(url, data=data, headers=headers)
+            req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, "Accept": "application/json"})
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
@@ -72,7 +65,7 @@ def http_json(url, post=None, timeout=240, tries=3, browser=False):
                 raise
         except Exception as e:  # таймауты, обрывы, кривой JSON
             last = e
-        time.sleep(5 * (attempt + 1))
+        time.sleep(8 * (attempt + 1))
     raise RuntimeError("не удалось получить %s: %s" % (url.split("?")[0], last))
 
 
@@ -153,7 +146,7 @@ Q_FOOD = """[out:json][timeout:240];
 (
   nwr(area.a)["amenity"~"^(restaurant|cafe|bar|pub|food_court)$"]["name"];
 );
-out center tags;""" % Q_AREA
+out center meta;""" % Q_AREA
 
 Q_FUN = """[out:json][timeout:240];
 %s
@@ -164,7 +157,7 @@ Q_FUN = """[out:json][timeout:240];
   nwr(area.a)["leisure"="sports_centre"]["sport"~"climbing"]["name"];
   nwr(area.a)["shop"="books"]["name"];
 );
-out center tags;""" % Q_AREA
+out center meta;""" % Q_AREA
 
 Q_METRO = """[out:json][timeout:120];
 %s
@@ -254,7 +247,31 @@ def osm_score(t, kind):
     return s
 
 
-def osm_place(el):
+# заведения, которые часто закрываются: для них свежесть данных важнее всего
+VOLATILE = {"restaurant", "cafe", "bar", "club", "quest", "karaoke", "anticafe", "arcade", "trampoline", "bowling",
+            "market", "banya", "climbing", "fun", "books"}
+# примерный уровень трат по типу места: 0 бесплатно, 1 недорого, 2 средне, 3 дорого
+PRICE = {"park": 0, "viewpoint": 0, "attraction": 0, "books": 0, "gallery": 1, "museum": 1, "arts": 1, "cinema": 1,
+         "rink": 1, "anticafe": 1, "arcade": 1, "zoo": 1, "planetarium": 1, "market": 1, "cafe": 1, "bowling": 2,
+         "fun": 2, "bar": 2, "restaurant": 2, "club": 2, "theatre": 2, "concert": 2, "climbing": 2, "trampoline": 2,
+         "karaoke": 3, "quest": 3, "waterpark": 3, "banya": 3}
+CHEAP_EATS = {"бургеры", "пицца", "шаурма", "пельмени и хинкали", "лапша", "вок", "блины", "сэндвичи", "курица",
+              "шашлык и кебаб", "выпечка", "пончики", "вьетнамская", "узбекская", "поке", "рамен"}
+PRICEY_EATS = {"стейки", "морепродукты", "французская", "рыба", "перуанская", "вино"}
+CLOSED_RE = re.compile(r"закрыт|не работает|ликвидир|closed|снесен|снесён", re.I)
+
+
+def last_seen(el, t):
+    """Дата, когда место последний раз правили или проверяли в OpenStreetMap (ГГГГ-ММ-ДД)."""
+    dates = [str(el.get("timestamp") or "")[:10]]
+    for k, v in t.items():
+        if k.startswith("check_date") or k == "survey:date":
+            dates.append(str(v)[:10])
+    dates = [d for d in dates if re.match(r"^\d{4}-\d{2}-\d{2}$", d)]
+    return max(dates) if dates else ""
+
+
+def osm_place(el, today):
     t = el.get("tags") or {}
     kind = osm_kind(t)
     if not kind:
@@ -263,6 +280,11 @@ def osm_place(el):
     if len(name) < 2:
         return None
     if t.get("access") in ("private", "no") or t.get("opening_hours") in ("closed", "off"):
+        return None
+    # явные признаки закрытия
+    if any(k.split(":")[0] in ("disused", "abandoned", "demolished", "removed", "was", "razed", "construction") for k in t):
+        return None
+    if CLOSED_RE.search(name) or CLOSED_RE.search(t.get("note", "") + " " + t.get("fixme", "") + " " + t.get("description", "")):
         return None
     la = el.get("lat") or (el.get("center") or {}).get("lat")
     lo = el.get("lon") or (el.get("center") or {}).get("lon")
@@ -277,7 +299,30 @@ def osm_place(el):
         return None
     if kind == "books" and not (has_site or t.get("opening_hours")):
         return None
-    p = {"n": name[:90], "k": kind, "la": round(la, 5), "lo": round(lo, 5), "s": osm_score(t, kind)}
+
+    score = osm_score(t, kind)
+    seen = last_seen(el, t)
+    age = 99.0
+    if seen:
+        try:
+            age = (today - datetime.date.fromisoformat(seen)).days / 365.0
+        except ValueError:
+            pass
+    if kind in VOLATILE:
+        # давно не проверявшиеся заведения выбрасываем: слишком часто они уже закрыты
+        if age >= 4 and not notable:
+            return None
+        score += 5 if age < 1 else 3 if age < 2 else 0 if age < 3 else -4
+    else:
+        score += 2 if age < 2 else 0
+    try:
+        score += min(2.0, int(el.get("version") or 1) / 5.0)   # много правок = место живое и заметное
+    except (TypeError, ValueError):
+        pass
+
+    p = {"n": name[:90], "k": kind, "la": round(la, 5), "lo": round(lo, 5), "s": score}
+    if seen:
+        p["y"] = int(seen[:4])
     street, house = t.get("addr:street"), t.get("addr:housenumber")
     if street:
         p["a"] = (street + (", " + house if house else ""))[:90]
@@ -286,8 +331,8 @@ def osm_place(el):
     site = good_url(t.get("website") or t.get("contact:website"))
     if site:
         p["w"] = site
+    cs = []
     if t.get("cuisine"):
-        cs = []
         for c in re.split(r"[;,]", t["cuisine"]):
             ru = CUISINE.get(c.strip().lower())
             if ru and ru not in cs:
@@ -296,6 +341,19 @@ def osm_place(el):
             p["c"] = ", ".join(cs[:3])
     if t.get("fee") == "no":
         p["f"] = 1
+    # уровень трат
+    pc = PRICE.get(kind, 2)
+    low_name = name.lower()
+    if kind == "restaurant":
+        if any(c in CHEAP_EATS for c in cs) or re.search(r"столовая|чайхана|хинкальная|пельменная|чебуречная|шашлычная|бургер|пицц", low_name):
+            pc = 1
+        if any(c in PRICEY_EATS for c in cs) or t.get("reservation") in ("required", "recommended") or t.get("stars"):
+            pc = 3
+    if kind == "bar" and re.search(r"рюмочная|пивная|разливн|паб|pub|beer|крафт", low_name):
+        pc = 1
+    if kind in ("museum", "gallery") and t.get("fee") == "no":
+        pc = 0
+    p["pc"] = pc
     return p
 
 
@@ -308,8 +366,12 @@ def fetch_osm():
     els2 = overpass(Q_FUN)
     log("  получено объектов: %d" % len(els2))
     places, seen = [], {}
+    today = datetime.date.today()
+    ages = {}
     for el in els + els2:
-        p = osm_place(el)
+        y = str(el.get("timestamp") or "?")[:4]
+        ages[y] = ages.get(y, 0) + 1
+        p = osm_place(el, today)
         if not p:
             continue
         key = (norm_name(p["n"]), round(p["la"], 3), round(p["lo"], 3))
@@ -319,6 +381,7 @@ def fetch_osm():
             continue
         seen[key] = p
         places.append(p)
+    log("  последняя правка по годам: %s" % ", ".join("%s: %d" % x for x in sorted(ages.items())))
     time.sleep(10)
     log("OpenStreetMap: станции метро…")
     metro, names = [], set()
@@ -335,189 +398,115 @@ def fetch_osm():
     return places, metro
 
 
-# ---------------------------------------------------------------- KudaGo
-KG_PLACE = {
-    "restaurants": "restaurant", "restaurant": "restaurant", "bar": "bar", "bars": "bar", "pub": "bar",
-    "brewery": "bar", "cafe": "cafe", "coffee": "cafe", "coffee-shops": "cafe", "anticafe": "anticafe",
-    "museums": "museum", "museum": "museum", "theatre": "theatre", "theater": "theatre", "cinema": "cinema",
-    "park": "park", "parks": "park", "clubs": "club", "club": "club", "art-space": "gallery",
-    "art-centers": "arts", "culture": "arts", "questroom": "quest", "quests": "quest", "amusement": "fun",
-    "attractions": "attraction", "sights": "attraction", "palace": "attraction", "homesteads": "attraction",
-    "bridge": "attraction", "fountain": "attraction", "concert-hall": "concert", "comedy-club": "comedy",
-    "photo-places": "viewpoint", "observatory": "planetarium", "planetarium": "planetarium",
-    "water-park": "waterpark", "rink": "rink", "bowling": "bowling", "karaoke": "karaoke", "zoo": "zoo",
-    "bath": "banya", "banya": "banya", "sauna": "banya", "climbing-walls": "climbing", "trampoline": "trampoline",
-    "bookstore": "books", "books": "books", "market": "market", "food-court": "market", "gastro-market": "market",
-    "kids": "fun", "recreation": "fun", "entertainment": "fun",
-}
-# порядок важен: более конкретная категория выигрывает у общей
-KG_PRIORITY = ["planetarium", "rink", "bowling", "karaoke", "quest", "climbing", "trampoline", "waterpark", "banya",
-               "anticafe", "comedy", "zoo", "museum", "gallery", "theatre", "cinema", "concert", "books", "market",
-               "restaurant", "bar", "cafe", "club", "arts", "viewpoint", "park", "attraction", "fun"]
-EVENT_SKIP = {"business-events", "shopping", "sale", "stock", "discount", "social-activity", "other", "presentation",
-              "speed-dating", "yarmarki-razvlecheniya-yarmarki", "recreation-other", "global"}
+# ---------------------------------------------------------------- афиша mos.ru
+MSK = datetime.timezone(datetime.timedelta(hours=3))
+# сфера на mos.ru (по подстроке) -> наша категория события
+SPHERES = [("выстав", "exhibition"), ("спектакл", "theater"), ("театр", "theater"), ("концерт", "concert"),
+           ("музык", "concert"), ("экскурс", "tour"), ("мастер-класс", "workshop"), ("лекци", "lecture"),
+           ("образован", "lecture"), ("встреч", "lecture"), ("квест", "quest"), ("игр", "quest"),
+           ("кино", "cinema"), ("фестивал", "festival"), ("праздник", "festival"), ("ярмар", "festival"),
+           ("спорт", "sport"), ("каток", "sport"), ("катк", "sport"), ("для детей", "kids"), ("детям", "kids"),
+           ("зоопарк", "kids"), ("парк", "park"), ("шоу", "show"), ("цирк", "show"), ("стендап", "show"),
+           ("танц", "party"), ("вечерин", "party")]
+# это не события, а услуги и технические метки
+SPHERE_SKIP = ("бронирование", "дополнительные услуги", "аренда", "долголетие", "абонемент", "услуг")
 
 
-def kg_pages(path, params, max_pages):
-    url = "%s/%s/?%s" % (KUDAGO, path, urllib.parse.urlencode(params))
-    out, pages = [], 0
-    while url and pages < max_pages:
-        res = http_json(url.replace("http://", "https://"), timeout=60, browser=True)
-        out.extend(res.get("results") or [])
-        url = res.get("next")
-        pages += 1
-        time.sleep(0.4)
-    return out
-
-
-def kg_coords(obj):
-    c = (obj or {}).get("coords") or {}
-    la, lo = c.get("lat"), c.get("lon")
+def msk_ts(s):
     try:
-        la, lo = float(la), float(lo)
+        return int(datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=MSK).timestamp())
     except (TypeError, ValueError):
-        return None, None
-    # отсекаем нули и точки далеко от Москвы
-    if not (54.5 < la < 57.0 and 35.5 < lo < 40.0):
-        return None, None
-    return round(la, 5), round(lo, 5)
+        return None
 
 
-def fetch_kudago_places():
-    log("KudaGo: места…")
-    base = {"location": "msk", "page_size": 100, "lang": "ru"}
-    full = "id,title,short_title,address,coords,subway,favorites_count,comments_count,categories,site_url,description,is_closed,is_stub,timetable"
-    try:
-        raw = kg_pages("places", dict(base, fields=full), 80)
-    except urllib.error.HTTPError:
-        raw = kg_pages("places", dict(base, fields="id,title,address,coords,categories,site_url,is_closed"), 80)
-    unknown, out = {}, []
-    for r in raw:
-        if r.get("is_closed") or r.get("is_stub"):
-            continue
-        kinds = set()
-        for c in r.get("categories") or []:
-            slug = c.get("slug") if isinstance(c, dict) else c
-            if slug in KG_PLACE:
-                kinds.add(KG_PLACE[slug])
-            elif slug:
-                unknown[slug] = unknown.get(slug, 0) + 1
-        kind = next((k for k in KG_PRIORITY if k in kinds), None)
-        la, lo = kg_coords(r)
-        title = cap(r.get("short_title") or r.get("title") or "")
-        if not kind or la is None or not title:
-            continue
-        fav = r.get("favorites_count") or 0
-        p = {"n": title[:90], "k": kind, "la": la, "lo": lo, "kg": good_url(r.get("site_url")),
-             "s": 6 + min(6.0, math.log2(1 + max(0, fav))), "_full": cap(r.get("title") or "")}
-        if r.get("address"):
-            p["a"] = clean_text(r["address"], 90)
-        if r.get("timetable"):
-            p["h"] = clean_text(r["timetable"], 80)
-        d = clean_text(r.get("description"))
-        if d:
-            p["d"] = d
-        out.append(p)
-    if unknown:
-        top = sorted(unknown.items(), key=lambda x: -x[1])[:25]
-        log("  нераспознанные категории KudaGo (можно добавить в KG_PLACE): %s" % ", ".join("%s×%d" % x for x in top))
-    log("  мест: %d (из %d)" % (len(out), len(raw)))
-    return out
-
-
-def fetch_kudago_events(now):
-    log("KudaGo: события на %d дней…" % EVENT_DAYS)
+def fetch_mos_events(now):
+    log("Афиша mos.ru: события на %d дней…" % EVENT_DAYS)
     until = now + EVENT_DAYS * 86400
-    params = {"location": "msk", "page_size": 100, "lang": "ru", "actual_since": now, "actual_until": until,
-              "expand": "place",
-              "fields": "id,title,short_title,dates,place,price,is_free,site_url,categories,age_restriction,favorites_count"}
-    raw = kg_pages("events", params, 60)
-    out, seen = [], set()
+    fmt = lambda ts: datetime.datetime.fromtimestamp(ts, MSK).strftime("%Y-%m-%d %H:%M:%S")
+    flt = json.dumps({">=date_to": fmt(now), "<=date_from": fmt(until)})
+    raw, page, pages = [], 1, 1
+    while page <= pages and page <= 40:
+        url = MOS_AFISHA + "?" + urllib.parse.urlencode({"per-page": 100, "page": page, "sort": "date_from",
+                                                          "filter": flt, "expand": "spheres,spots"})
+        res = http_json(url, timeout=120)
+        raw.extend(res.get("items") or [])
+        pages = int((res.get("_meta") or {}).get("pageCount") or 1)
+        page += 1
+        time.sleep(0.5)
+    out, seen, skipped = [], set(), {}
     for r in raw:
         if r.get("id") in seen:
             continue
         seen.add(r.get("id"))
-        cats = [c.get("slug") if isinstance(c, dict) else c for c in (r.get("categories") or [])]
-        cats = [c for c in cats if c]
-        if not cats or any(c in EVENT_SKIP for c in cats):
+        title = cap(clean_text(r.get("title"), 110))
+        spheres = [str(x.get("title") or "").lower() for x in (r.get("spheres") or []) if isinstance(x, dict)]
+        if not title or r.get("ebs_type") == "membership" or any(k in sp for sp in spheres for k in SPHERE_SKIP):
             continue
+        cats = []
+        for sp in spheres:
+            for key, cat in SPHERES:
+                if key in sp and cat not in cats:
+                    cats.append(cat)
+                    break
+            else:
+                skipped[sp] = skipped.get(sp, 0) + 1
+        if not cats:
+            cats = ["other"]
+        s, e = msk_ts(r.get("date_from")), msk_ts(r.get("date_to"))
+        os_, oe = msk_ts(r.get("occurrence_date_from")), msk_ts(r.get("occurrence_date_to"))
+        if s is None:
+            continue
+        e = e or s
         dates = []
-        for d in r.get("dates") or []:
-            try:
-                s, e = int(d.get("start")), int(d.get("end") or d.get("start"))
-            except (TypeError, ValueError):
-                continue
-            if e < now or s > until:
-                continue
-            dates.append([max(s, now - 86400 * 400), min(e, until + 86400 * 400)])
+        if os_ and now - 3600 <= os_ <= until:
+            dates.append([os_, oe if oe and oe > os_ else os_ + 2 * 3600])     # ближайший сеанс
+        if e - s <= 36 * 3600:
+            if s >= now - 3600 and not dates:
+                dates.append([s, e])
+        elif "exhibition" in cats or cats == ["park"]:
+            dates.append([s, e])                                             # выставка: «идёт до…»
         if not dates:
             continue
-        dates.sort()
-        title = cap(r.get("short_title") or r.get("title") or "")
-        url = good_url(r.get("site_url"))
-        if not title or not url:
-            continue
-        ev = {"t": title[:110], "k": cats[:3], "d": dates[:8], "u": url, "fav": r.get("favorites_count") or 0}
-        place = r.get("place") if isinstance(r.get("place"), dict) else None
-        if place:
-            la, lo = kg_coords(place)
-            if la is not None:
-                ev["la"], ev["lo"] = la, lo
-            if place.get("title"):
-                ev["p"] = cap(place["title"])[:80]
-            if place.get("address"):
-                ev["a"] = clean_text(place["address"], 80)
-        if r.get("is_free"):
+        ev = {"t": title, "k": cats[:3], "d": dates, "u": "https://www.mos.ru/afisha/event/%s/" % r.get("id")}
+        spot = next((x for x in (r.get("spots") or []) if isinstance(x, dict)), None)
+        if spot:
+            try:
+                la, lo = float(spot.get("lat")), float(spot.get("lon"))
+                if 54.5 < la < 57.0 and 35.5 < lo < 40.0:
+                    ev["la"], ev["lo"] = round(la, 5), round(lo, 5)
+            except (TypeError, ValueError):
+                pass
+            if spot.get("title"):
+                ev["p"] = clean_text(spot["title"], 80)
+            if spot.get("address"):
+                ev["a"] = clean_text(spot["address"], 80)
+            md = spot.get("ebs_metrodata")
+            if isinstance(md, list) and md and isinstance(md[0], dict) and md[0].get("name"):
+                ev["m"] = str(md[0]["name"])[:40]
+        pf, pt = r.get("ebs_price_from"), r.get("ebs_price_to")
+        if r.get("free") or (pf == 0 and pt == 0):
             ev["fr"] = 1
-        if r.get("price"):
-            ev["pr"] = clean_text(r["price"], 60)
-        age = re.sub(r"\D", "", str(r.get("age_restriction") or ""))
-        if age:
-            ev["ag"] = int(age)
+        elif isinstance(pf, (int, float)) and pf > 0:
+            ev["pf"] = int(pf)
+            ev["pr"] = ("%d ₽" % pf) if not pt or pt == pf else ("от %d до %d ₽" % (pf, pt))
+        age = (r.get("restriction") or {}).get("age") if isinstance(r.get("restriction"), dict) else None
+        if isinstance(age, int) and age > 0:
+            ev["ag"] = age
         out.append(ev)
-    out.sort(key=lambda e: -e["fav"])
+    # сначала события с известным временем сеанса, потом длинные выставки
+    out.sort(key=lambda ev: (ev["d"][0][1] - ev["d"][0][0] > 36 * 3600, ev["d"][0][0]))
     out = out[:MAX_EVENTS]
-    log("  событий: %d (из %d)" % (len(out), len(raw)))
+    if skipped:
+        top = sorted(skipped.items(), key=lambda x: -x[1])[:20]
+        log("  сферы без категории: %s" % ", ".join("%s×%d" % x for x in top))
+    kinds = {}
+    for ev in out:
+        kinds[ev["k"][0]] = kinds.get(ev["k"][0], 0) + 1
+    log("  событий: %d (из %d): %s" % (len(out), len(raw), ", ".join("%s %d" % x for x in sorted(kinds.items(), key=lambda x: -x[1]))))
     return out
 
 
 # ---------------------------------------------------------------- сборка
-def merge(osm, kg):
-    """Склеивает одно и то же место из двух источников: совпало имя и точки ближе 300 м."""
-    grid = {}
-    for p in osm:
-        grid.setdefault((int(p["la"] * 200), int(p["lo"] * 200)), []).append(p)
-    merged, added = 0, 0
-    for k in kg:
-        full = k.pop("_full", "")
-        names = {norm_name(k["n"]), norm_name(full)} - {""}
-        gx, gy = int(k["la"] * 200), int(k["lo"] * 200)
-        best = None
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                for p in grid.get((gx + dx, gy + dy), []):
-                    if dist_km(k["la"], k["lo"], p["la"], p["lo"]) > 0.3:
-                        continue
-                    pn = norm_name(p["n"])
-                    if any(same_name(pn, n) for n in names) and (best is None or p["s"] > best["s"]):
-                        best = p
-        if best:
-            best["s"] += k["s"]
-            for f in ("kg", "d"):
-                if k.get(f):
-                    best[f] = k[f]
-            for f in ("a", "h"):
-                if k.get(f) and not best.get(f):
-                    best[f] = k[f]
-            merged += 1
-        else:
-            osm.append(k)
-            grid.setdefault((gx, gy), []).append(k)
-            added += 1
-    log("Склейка: совпало %d, добавлено из KudaGo %d" % (merged, added))
-    return osm
-
-
 def finalize(places, metro):
     by_kind = {}
     for p in places:
@@ -528,8 +517,6 @@ def finalize(places, metro):
         out.extend(lst[:LIMITS.get(kind, DEFAULT_LIMIT)])
     for p in out:
         p["s"] = round(p["s"], 1)
-        if not p.get("kg"):
-            p.pop("kg", None)
         if metro:
             m = min(metro, key=lambda m: dist_km(p["la"], p["lo"], m[1], m[2]))
             d = dist_km(p["la"], p["lo"], m[1], m[2])
@@ -551,52 +538,45 @@ def load_old():
 def main():
     now = int(time.time())
     old = load_old()
-    old_real = bool(old.get("places")) and not old.get("demo")
+    old_real = bool(old.get("places")) and not old.get("demo") and any("pc" in p for p in old["places"][:50])
     notes = []
+    # места обновляем по понедельникам и четвергам (и при ручном запуске), афишу — каждый день
+    full = os.environ.get("FULL", "true").lower() != "false" or datetime.datetime.now(datetime.timezone.utc).weekday() in (0, 3) or not old_real
 
     places, metro, osm_ok = [], [], False
-    try:
-        places, metro = fetch_osm()
-        osm_ok = len(places) >= 500
-        if not osm_ok:
-            warn("OpenStreetMap вернул подозрительно мало мест (%d) — считаю это сбоем" % len(places))
-    except Exception as e:
-        warn("OpenStreetMap недоступен: %s" % e)
-
-    kg_places, kg_ok = [], False
-    try:
-        kg_places = fetch_kudago_places()
-        kg_ok = len(kg_places) > 0
-    except Exception as e:
-        warn("KudaGo (места) недоступен: %s" % e)
+    if full:
+        try:
+            places, metro = fetch_osm()
+            osm_ok = len(places) >= 500
+            if not osm_ok:
+                warn("OpenStreetMap вернул подозрительно мало мест (%d) — считаю это сбоем" % len(places))
+        except Exception as e:
+            warn("OpenStreetMap недоступен: %s" % e)
+    else:
+        log("Сегодня обновляю только афишу, база мест остаётся прежней")
 
     events, ev_ok = [], False
     try:
-        events = fetch_kudago_events(now)
-        ev_ok = True
+        events = fetch_mos_events(now)
+        ev_ok = len(events) > 0
     except Exception as e:
-        warn("KudaGo (события) недоступен: %s" % e)
+        warn("Афиша mos.ru недоступна: %s" % e)
     if not ev_ok:
         # оставляем прежние события, которые ещё не прошли
         events = [e for e in (old.get("events") or []) if any(d[1] >= now for d in e.get("d", []))]
 
     if osm_ok:
-        final = finalize(merge(places, kg_places), metro)
+        final = finalize(places, metro)
         if not metro:
             metro = old.get("metro") or []
-        if not kg_ok:
-            notes.append("без подборок KudaGo")
         demo = False
-    elif old_real:
-        warn("Оставляю прежнюю базу мест, обновляю только события")
-        final, metro, demo = old["places"], old.get("metro") or [], False
-    elif kg_ok:
-        final, demo = finalize(kg_places_clean(kg_places), old.get("metro") or []), False
-        metro = old.get("metro") or []
-        notes.append("только KudaGo, без OpenStreetMap")
+    elif old.get("places"):
+        if full:
+            warn("Оставляю прежнюю базу мест, обновляю только события")
+        final, metro, demo = old["places"], old.get("metro") or [], bool(old.get("demo"))
     else:
-        warn("Ни один источник не ответил — на сайте остаётся демо-набор. Запустите обновление ещё раз позже.")
-        final, metro, demo = old.get("places") or [], old.get("metro") or [], bool(old.get("demo", True))
+        warn("Источник мест не ответил, а прежней базы нет. Запустите обновление ещё раз позже.")
+        final, metro, demo = [], [], True
 
     counts = {}
     for p in final:
@@ -614,12 +594,6 @@ def main():
     for k, v in sorted(counts.items(), key=lambda x: -x[1]):
         log("  %-12s %d" % (k, v))
     return 0
-
-
-def kg_places_clean(kg):
-    for k in kg:
-        k.pop("_full", None)
-    return kg
 
 
 if __name__ == "__main__":

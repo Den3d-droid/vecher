@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 2 * * 1,4"   # понедельник и четверг, 05:17 по Москве
+    - cron: "17 2 * * *"   # каждый день в 05:17 по Москве: афиша ежедневно, места по понедельникам и четвергам
   workflow_dispatch:          # кнопка «Run workflow» для запуска вручную
 
 permissions:
@@ -28,6 +28,8 @@ jobs:
           python-version: "3.12"
 
       - name: Собрать места и события
+        env:
+          FULL: ${{ github.event_name != 'schedule' }}
         run: python scripts/update_data.py
 
       - name: Сохранить базу в репозитории
