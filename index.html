@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Генератор вечера · Москва</title>
+<meta name="description" content="Собирает план на вечер из реальных мест и событий Москвы.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#17130f; --panel:#211b16; --panel2:#2a231c; --line:#3a3027;
+  --text:#f3e9dc; --muted:#a8998a; --accent:#f0a24a; --accent2:#e86f4c; --glow:rgba(240,162,74,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(1200px 600px at 80% -10%,#3a2615 0%,transparent 60%),radial-gradient(900px 500px at -10% 110%,#2b1a24 0%,transparent 60%),var(--bg);
+  color:var(--text);font-family:Manrope,system-ui,sans-serif;min-height:100vh;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:48px 20px 60px}
+header{text-align:center;margin-bottom:36px}
+.kicker{letter-spacing:.25em;text-transform:uppercase;font-size:12px;color:var(--accent)}
+h1{font-family:"Playfair Display",serif;font-weight:600;font-size:clamp(38px,6vw,64px);line-height:1.05;margin:10px 0 12px}
+h1 em{font-style:italic;font-weight:500;color:var(--accent)}
+.sub{color:var(--muted);max-width:560px;margin:0 auto}
+.controls{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 22px 8px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}
+.label{width:110px;flex-shrink:0;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.chips{display:flex;flex-wrap:wrap;gap:8px;flex:1;align-items:center}
+.chip{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer;transition:.15s}
+.chip:hover{border-color:#5a4836}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a120a;font-weight:700}
+.outonly[hidden]{display:none}
+.metro{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;width:210px;max-width:100%}
+.metro::placeholder{color:var(--muted)}
+.metro:focus{outline:none;border-color:var(--accent)}
+.where{color:var(--accent);font-size:13px;width:100%;padding-left:120px;margin-top:-8px}
+.go{display:block;margin:26px auto 34px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a0f07;border:0;
+  font:700 18px Manrope,sans-serif;padding:16px 38px;border-radius:999px;cursor:pointer;box-shadow:0 10px 40px var(--glow);transition:transform .15s}
+.go:hover{transform:translateY(-2px)}
+.go:active{transform:translateY(0)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;position:relative;min-height:160px;display:flex;flex-direction:column}
+.card.locked{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.ctop{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+.ctitle{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+.btns{display:flex;gap:6px}
+.ib{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font-size:15px;display:grid;place-items:center}
+.ib:hover{border-color:var(--accent)}
+.ib[aria-pressed="true"]{background:var(--accent);color:#1a120a;border-color:var(--accent)}
+.main{font-family:"Playfair Display",serif;font-size:22px;line-height:1.25;margin-bottom:6px;overflow-wrap:anywhere}
+.note{color:var(--muted);font-size:14px}
+.tag{display:inline-block;font-size:12px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:0 6px 8px 0}
+.meta{font-size:14px;color:var(--text);margin-top:8px;display:grid;gap:3px}
+.meta span{color:var(--muted)}
+.links{margin-top:auto;padding-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+.links a{color:#1a120a;background:var(--accent);text-decoration:none;font-size:13px;font-weight:700;padding:7px 12px;border-radius:999px}
+.links a.sec{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
+.links a:hover{filter:brightness(1.1);border-color:var(--accent)}
+.card.fade .main,.card.fade .note,.card.fade .meta{animation:in .45s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card.wide{grid-column:1/-1;background:linear-gradient(135deg,#2c2016,#2a1b20);min-height:0}
+.foot{display:flex;justify-content:center;gap:10px;margin-top:22px;flex-wrap:wrap}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--text);padding:10px 18px;border-radius:999px;font:inherit;cursor:pointer}
+.ghost:hover{border-color:var(--accent)}
+.empty{text-align:center;color:var(--muted);padding:30px 0}
+.banner{background:var(--panel2);border:1px dashed var(--accent);color:var(--text);border-radius:14px;padding:12px 16px;font-size:14px;margin-bottom:16px}
+.credits{margin-top:48px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
+.credits a{color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#1a120a;padding:10px 18px;border-radius:12px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:5;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
+@media (max-width:560px){.label{width:100%}.wrap{padding-top:32px}.where{padding-left:0;margin-top:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Москва · сегодня вечером</div>
+    <h1>Генератор <em>вечера</em></h1>
+    <p class="sub">Выберите настроение, а я соберу план. Дома — фильм, ужин и занятие. В городе — реальные места и события Москвы с адресами и ссылкой на отзывы.</p>
+  </header>
+
+  <div id="banner"></div>
+  <section class="controls" id="controls"></section>
+
+  <button class="go" id="go">✨ Собрать вечер</button>
+
+  <section id="out"><p class="empty">Нажмите кнопку, и вечер сложится сам. Понравившиеся пункты можно закрепить 🔒, а остальные перекрутить ↻.</p></section>
+
+  <div class="foot" id="foot" hidden>
+    <button class="ghost" id="copy">📋 Скопировать план</button>
+    <button class="ghost" id="reset">Снять все замки</button>
+  </div>
+
+  <div class="credits" id="credits"></div>
+</div>
+<datalist id="metrolist"></datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+// =====================================================================
+//  Параметры вечера
+// =====================================================================
+const DIMS = [
+  {key:'who', label:'Компания', opts:[['solo','Один'],['duo','Вдвоём'],['friends','С друзьями'],['family','С семьёй и детьми']]},
+  {key:'mood', label:'Настроение', opts:[['cozy','Уютно'],['fun','Весело'],['romance','Романтично'],['deep','Задумчиво'],['adv','Хочу приключений']]},
+  {key:'energy', label:'Энергия', opts:[['low','Только лежать'],['mid','Средне'],['high','Полон сил']]},
+  {key:'budget', label:'Бюджет', opts:[['free','Почти бесплатно'],['low','Немного'],['high','Не жалко']]},
+  {key:'place', label:'Где', opts:[['home','Дома'],['out','Выбраться куда-то']]},
+  {key:'day', label:'Когда', out:true, opts:[['today','Сегодня'],['tomorrow','Завтра'],['weekend','В выходные']]},
+];
+const RADII = [['walk','Пешком, до 1,5 км',1.5],['near','Недалеко, до 4 км',4],['any','Вся Москва',1e9]];
+const TAGS = {}; DIMS.filter(d=>d.key==='who'||d.key==='mood').forEach(d=>d.opts.forEach(o=>TAGS[o[0]]=d.key));
+const state = {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null};
+try{ Object.assign(state, JSON.parse(localStorage.getItem('evening-state-v2')||'{}')); }catch(e){}
+function save(){ try{ localStorage.setItem('evening-state-v2', JSON.stringify(state)); }catch(e){} }
+
+// =====================================================================
+//  Идеи для вечера дома (и запасные идеи, если база мест не загрузилась)
+//  формат: [заголовок, пояснение, 'теги'] — можно свободно дописывать свои
+// =====================================================================
+const DB = {
+ watch:[
+  ['«Амели» (2001)','Тёплая парижская сказка о мелочах, которые делают жизнь лучше.','cozy romance solo duo'],
+  ['«Отель „Гранд Будапешт“» (2014)','Кукольно-красивая и очень смешная авантюра Уэса Андерсона.','fun cozy solo duo friends'],
+  ['«Достать ножи» (2019)','Детектив, где можно угадывать убийцу всей компанией.','fun adv duo friends family'],
+  ['«Интерстеллар» (2014)','Космос, время и любовь. После него хочется долго молчать.','deep adv solo duo'],
+  ['«Начало» (2010)','Сны внутри снов. Потом можно спорить о финале.','adv deep duo friends'],
+  ['«Ла-Ла Ленд» (2016)','Мюзикл о мечтах и выборе, красивый до мурашек.','romance deep duo solo'],
+  ['«Перед рассветом» (1995)','Двое незнакомцев и одна ночь разговоров в Вене.','romance deep duo solo'],
+  ['«Мой сосед Тоторо» (1988)','Самый уютный мультфильм на свете.','cozy family solo'],
+  ['«Унесённые призраками» (2001)','Волшебное приключение Миядзаки для любого возраста.','adv cozy family duo'],
+  ['«Иван Васильевич меняет профессию» (1973)','Классика, которую можно цитировать хором.','fun family friends'],
+  ['«Ирония судьбы, или С лёгким паром!» (1975)','До Нового года всего полтора месяца, самое время.','cozy romance family duo'],
+  ['«Вечное сияние чистого разума» (2004)','О любви, памяти и о том, стоит ли что-то забывать.','deep romance duo solo'],
+  ['«Паразиты» (2019)','Смешно, потом страшно, потом очень страшно.','deep adv duo friends'],
+  ['«Безумный Макс: Дорога ярости» (2015)','Два часа чистого адреналина.','adv fun friends duo'],
+  ['«Один дома» (1990)','Беспроигрышный семейный вариант на зимний вечер.','fun cozy family'],
+  ['«Карты, деньги, два ствола» (1998)','Быстрый, наглый британский криминальный хаос.','fun adv friends'],
+  ['«Невероятная жизнь Уолтера Митти» (2013)','Фильм-пинок, после которого хочется куда-то поехать.','adv cozy solo duo'],
+  ['«Джули и Джулия» (2009)','Вкусное кино о еде и о том, как найти своё дело.','cozy solo duo'],
+  ['«Жизнь Пи» (2012)','Мальчик, тигр, океан и вопрос о вере.','deep adv family solo'],
+  ['«Москва слезам не верит» (1979)','Большая история о судьбе, где важна каждая деталь.','deep romance family duo'],
+  ['Сериал «Шерлок», 1-я серия','Если зацепит, то вечер затянется.','adv duo solo friends'],
+  ['Сериал «Офис» (США), 3 серии подряд','Неловкий юмор, который лечит.','fun solo duo friends'],
+  ['«Маленькая мисс Счастье» (2006)','Семейный роуд-муви, смешной и трогательный.','fun cozy family duo'],
+  ['«Бёрдмэн» (2014)','Как будто снято одним дублем. Кино для тех, кто любит думать.','deep solo duo'],
+ ],
+ go:[
+  ['Ночной сеанс в кинотеатре','Возьмите последний ряд и большой попкорн.','romance fun duo friends low high mid'],
+  ['Паб-квиз','Соберите команду и придумайте ей дурацкое название.','fun friends duo mid high low'],
+  ['Каток','Горячий чай в термосе обязателен.','fun romance adv duo friends family high mid low ACTIVE'],
+  ['Антикафе с настолками','Платишь за время, а игры и чай уже включены.','fun cozy friends duo family mid low free'],
+  ['Музей или выставка вечером','Там тише и атмосфернее, чем днём.','deep romance solo duo mid low'],
+  ['Стендап-вечер','Сядьте не в первый ряд, если боитесь стать материалом.','fun duo friends mid low high'],
+  ['Караоке','Правило: каждый поёт хотя бы одну песню.','fun friends high low high ACTIVE'],
+  ['Прогулка с термосом по набережной или парку','Без цели, без маршрута, с глинтвейном или какао.','cozy romance deep solo duo free low mid'],
+  ['Планетарий','Почувствовать себя маленьким, но в хорошем смысле.','deep romance adv duo family solo low mid'],
+  ['Ресторан с кухней, которую вы ещё не пробовали','Эфиопская, перуанская, бурятская. Главное, чтобы что-то новое.','adv romance duo friends high PRICEY'],
+  ['Мастер-класс: гончарка, коктейли или живопись','Уйти домой с чем-то, сделанным своими руками.','adv romance fun duo friends high mid PRICEY ACTIVE'],
+  ['Квест-комната','Час на побег, и вы узнаете друг о друге многое.','adv fun friends duo family high PRICEY ACTIVE'],
+  ['Баня или спа','Пар, травяной чай и тишина. Максимальное расслабление.','cozy romance duo friends low high PRICEY'],
+  ['Джазовый бар с живой музыкой','Полумрак, саксофон и разговоры.','romance deep duo solo mid high'],
+  ['Боулинг','Даже если не умеете, будет весело.','fun friends family duo mid high low'],
+  ['Книжный магазин, который открыт допоздна','Каждый выбирает книгу другому.','cozy deep solo duo low mid'],
+  ['Ночная фотопрогулка','Цель: 10 кадров города, которых вы раньше не замечали.','adv deep solo duo free mid high ACTIVE'],
+ ],
+ food:[
+  ['Пицца на лаваше','Каждый собирает свою, а потом все голосуют за лучшую.','fun friends family duo mid high free low home'],
+  ['Сырное фондю из того, что найдётся','Хлеб, сыр, немного вина или молока, и уже романтика.','romance cozy duo low high mid'],
+  ['Паста карбонара за 15 минут','Яйца, пармезан, бекон, перец. Беспроигрышно.','cozy romance solo duo low mid low free'],
+  ['Гренки и горячее какао','Еда из детства, лучше всего под плед.','cozy family solo low free LAZY'],
+  ['Битва блинов','Три вида начинки, и каждый придумывает свою комбинацию.','fun family friends high mid free low'],
+  ['Сырная тарелка и глинтвейн','Минимум готовки, максимум атмосферы.','romance cozy duo friends low mid high'],
+  ['Домашняя шаурма','Лаваш, курица, овощи, соус. Собрать вместе проще, чем кажется.','fun friends duo mid high low'],
+  ['Суши-сет с доставкой','Никакой готовки, только палочки и сериал.','low cozy fun duo friends solo low high LAZY'],
+  ['Хинкали из магазина и острая аджика','Сварить, поперчить, есть руками.','cozy fun friends duo low mid low'],
+  ['Запечённая картошка с розмарином и сметаной','Пахнет домом на всю квартиру.','cozy family solo duo low mid free'],
+  ['Шакшука','Яйца в томатах со специями, и макать в соус хлеб.','cozy adv solo duo mid free low'],
+  ['Домашние бургеры','Каждый собирает свою башню.','fun friends family high low high ACTIVE'],
+  ['Прокачанный рамен из лапши','Яйцо всмятку, зелёный лук, кунжут, соевый соус.','cozy solo low free LAZY'],
+  ['Плов в казане','Долгий, но в этом и смысл вечера.','cozy family friends high low ACTIVE'],
+  ['Тапас-вечер: 5 мини-закусок','Как маленькое путешествие в Испанию.','romance adv duo friends mid high ACTIVE'],
+  ['Попкорн трёх вкусов','Солёный, карамельный и с паприкой.','fun family friends duo solo low free'],
+  ['Сырники на ужин','Почему бы и нет? Со сметаной и вареньем.','cozy family solo duo mid free low'],
+  ['Шоколадное фондю с фруктами','Клубника, бананы, маршмеллоу.','romance fun duo family low high'],
+  ['Том ям из готовой пасты','Острый тайский суп за 20 минут.','adv solo duo mid low'],
+  ['Ужин на одном противне','Курица, овощи, специи, и всё в духовку. Посуды минимум.','cozy solo duo family low low free LAZY'],
+ ],
+ eatout:[
+  ['Грузинское кафе','Хачапури по-аджарски на двоих.','cozy fun friends duo family low high'],
+  ['Вьетнамский фо в маленькой забегаловке','Горячо, дёшево, честно.','cozy adv solo duo low'],
+  ['Рамен-бар','Сесть за стойку и смотреть, как готовят.','cozy adv solo duo low high'],
+  ['Гастромаркет','Каждый берёт своё, а потом пробуют друг у друга.','fun adv friends duo family low high'],
+  ['Пекарня перед закрытием','Скидки на выпечку и тёплые булки с собой.','cozy solo duo free low'],
+  ['Ресторан с дегустационным сетом','Если праздник, то праздник.','romance adv duo high PRICEY'],
+  ['Уличная еда и прогулка','Шаурма, кофе, пончики, всё на ходу.','fun adv friends duo solo free low'],
+  ['Узбекская чайхана','Плов, самса и бесконечный чай.','cozy friends family duo low'],
+ ],
+ do:[
+  ['Настолка «Кодовые имена»','Командная игра на ассоциации, всегда шумно.','fun friends family mid high home'],
+  ['Настолка «Каркассон»','Спокойная стратегия, где строят средневековый мир.','cozy duo family solo low mid'],
+  ['Настолка «Имаджинариум» или «Диксит»','Странные картинки и ещё более странные ассоциации.','fun cozy friends family duo mid'],
+  ['«Мафия»','Классика для большой компании, ведущим может быть тот, кто пришёл последним.','fun adv friends high ACTIVE'],
+  ['Пазл на 1000 деталей под подкаст','Медитация, которая длится несколько вечеров.','cozy solo duo low LAZY'],
+  ['Нарисуйте портреты друг друга за 2 минуты','Чем хуже, тем смешнее. Обязательно повесить на холодильник.','fun duo friends family mid'],
+  ['Слепая дегустация','Чипсы, шоколад или чай: угадать марку с закрытыми глазами.','fun duo friends family mid'],
+  ['Разобрать фото за год и выбрать 10 лучших','И вспомнить истории за каждым кадром.','deep cozy solo duo family low'],
+  ['Письмо себе через 5 лет','Запечатать в конверт и написать дату вскрытия.','deep solo duo low'],
+  ['Караоке с YouTube','Микрофоном может быть расчёска.','fun friends family high ACTIVE'],
+  ['Форт из подушек и одеял','Фильм смотреть уже внутри.','cozy fun family duo mid'],
+  ['Танцы на кухне под хиты 2000-х','Ровно 3 песни, и потом решите, продолжать ли.','fun duo friends solo high ACTIVE'],
+  ['36 вопросов, чтобы влюбиться','Знаменитый психологический эксперимент. Работает даже с теми, с кем вы давно вместе.','romance deep duo low mid'],
+  ['Путешествие, не выходя из дома','Выберите страну наугад: её музыка, её еда, её кино.','adv romance duo family friends mid'],
+  ['Квиз «Насколько хорошо ты меня знаешь»','По 10 вопросов друг о друге.','fun friends family duo mid'],
+  ['Прогулка без телефона','Час по району, куда раньше не сворачивали.','adv deep solo duo mid high ACTIVE'],
+  ['Выучить один карточный фокус','К концу вечера показать его кому-нибудь, хоть по видеосвязи.','fun solo family mid'],
+  ['Список 50 дел на жизнь','Потом выберите одно и запланируйте на этот месяц.','deep adv solo duo low'],
+  ['Театр теней с фонариком','Каждый показывает животное, остальные угадывают.','fun family cozy mid'],
+  ['Растяжка 20 минут и ванна','Перезагрузить тело перед новой неделей.','cozy solo low LAZY'],
+  ['Сочинить историю по одному предложению','По кругу, а в конце прочитать вслух целиком.','fun deep friends family duo low'],
+  ['Позвонить человеку, с которым давно не говорили','Не написать, а именно позвонить.','deep cozy solo low'],
+ ],
+ music:[
+  ['Джаз 50-х','Чет Бейкер, Билл Эванс, Майлз Дэвис.','cozy romance deep'],
+  ['Lo-fi hip hop','Ненавязчивый фон, под который хорошо думается.','cozy deep'],
+  ['Советская эстрада 70-х','Тёплая и немного смешная ностальгия.','fun cozy'],
+  ['Саундтреки Ханса Циммера','Почувствовать себя главным героем.','adv deep'],
+  ['Синти-поп 80-х','Неоновое настроение, хочется двигаться.','fun adv'],
+  ['Босса-нова','Жоао Жилберту и Антониу Карлос Жобим. Лето в любую погоду.','romance cozy'],
+  ['Русский рок 90-х','Кино, Сплин, Чайф. Под гитару, если есть.','fun deep'],
+  ['Ноктюрны Шопена','Свечи сами просятся к такой музыке.','romance deep'],
+  ['Фанк и диско','Earth, Wind & Fire. Невозможно усидеть на месте.','fun adv'],
+  ['Эмбиент: Брайан Ино','Музыка как обои, в хорошем смысле.','deep cozy'],
+  ['Французский шансон','Эдит Пиаф, Шарль Азнавур, Ив Монтан.','romance cozy'],
+  ['Инди-фолк','Bon Iver, Iron & Wine, Fleet Foxes.','cozy deep romance'],
+  ['Хиты 2000-х','Можно подпевать, даже если вы стесняетесь.','fun'],
+  ['Музыка из игр','Саундтреки Journey и Hollow Knight.','adv deep cozy'],
+ ],
+ rule:[
+  ['Телефоны в коробку до конца вечера','Кто первым достанет, тот моет посуду.','duo friends family'],
+  ['Каждый рассказывает историю, которую другие ещё не слышали','Даже если вы знакомы 20 лет.','duo friends family'],
+  ['Ужин при свечах','Даже если на тарелке доширак.','duo solo romance cozy'],
+  ['Дресс-код: самое нелепое из шкафа','Лучший образ получает приз.','friends family fun'],
+  ['Тост за хорошее, что случилось на неделе','Каждый называет хоть одну вещь.','duo friends family'],
+  ['Одна фотография на весь вечер','Выбирайте момент с умом.','duo friends family solo'],
+  ['Первые 10 минут говорить с акцентом','Французским, грузинским или пиратским.','fun friends family duo'],
+  ['Выключить верхний свет','Только гирлянды, лампы или свечи.','cozy romance'],
+  ['Заварить чай, который ещё ни разу не пробовали','Маленькое открытие вечера.','solo duo cozy deep'],
+  ['Перед сном записать 3 момента вечера','Через год будет приятно перечитать.','solo duo deep'],
+  ['Горячий душ с музыкой перед стартом','Перезагрузка из рабочего режима в вечерний.','solo cozy'],
+  ['Никаких разговоров о работе','За каждое нарушение один отжим.','duo friends'],
+  ['Комплимент каждому за столом','Конкретный, а не дежурный.','duo friends family romance'],
+ ],
+};
+
+// =====================================================================
+//  Реальные места: загружаются из data/places.json (обновляется автоматически)
+// =====================================================================
+let DATA = null;
+const KIND = {
+  restaurant:'Ресторан', cafe:'Кафе', bar:'Бар', market:'Фудмолл или рынок',
+  museum:'Музей', gallery:'Галерея', theatre:'Театр', cinema:'Кинотеатр', planetarium:'Планетарий', arts:'Арт-центр',
+  books:'Книжный', concert:'Концертная площадка', bowling:'Боулинг', karaoke:'Караоке', quest:'Квест', arcade:'Игровой центр',
+  rink:'Каток', climbing:'Скалодром', trampoline:'Батутный центр', waterpark:'Аквапарк', banya:'Баня', anticafe:'Антикафе',
+  zoo:'Зоопарк или океанариум', comedy:'Стендап-клуб', club:'Клуб', park:'Парк', viewpoint:'Смотровая площадка',
+  attraction:'Достопримечательность', fun:'Развлечения',
+};
+const TIP = {
+  museum:'Вечером залы пустеют, и смотреть гораздо приятнее. Проверьте, до скольки касса.',
+  gallery:'Выберите одну работу, которая зацепила, и расскажите друг другу почему.',
+  theatre:'Посмотрите афишу на сайте: билеты на сегодня иногда появляются за пару часов.',
+  cinema:'Берите последний ряд и большой попкорн.',
+  planetarium:'Почувствовать себя маленьким, но в хорошем смысле.',
+  arts:'Загляните на сайт: там часто идут лекции, кино и концерты.',
+  books:'Правило: каждый выбирает книгу другому.',
+  concert:'Проверьте афишу на сегодня, вдруг играет что-то неожиданное.',
+  bowling:'Проигравший угощает.',
+  karaoke:'Правило: каждый поёт хотя бы одну песню.',
+  quest:'Лучше забронировать заранее: вечерние слоты разбирают.',
+  arcade:'Назначьте турнир и приз победителю.',
+  rink:'Термос с горячим чаем обязателен. Уточните расписание сеансов.',
+  climbing:'Новичкам обычно дают инструктора, просто предупредите.',
+  trampoline:'Через 15 минут вы поймёте, что это настоящая тренировка.',
+  waterpark:'Лето в любое время года.',
+  banya:'Пар, травяной чай и никакой спешки.',
+  anticafe:'Платите за время, а чай и настолки уже включены.',
+  zoo:'Проверьте часы работы: зимой закрываются раньше.',
+  comedy:'Не садитесь в первый ряд, если не хотите стать материалом.',
+  club:'Раньше полуночи там обычно пусто.',
+  park:'Прогулка без маршрута, с чем-нибудь горячим в руках.',
+  viewpoint:'Приходите к закату или когда зажгутся огни.',
+  attraction:'Место, мимо которого все проходят, а внутрь не заходят.',
+  fun:'Загляните на сайт, чтобы понять, что там сегодня.',
+  restaurant:'Если вечер пятничный, лучше забронировать стол.',
+  cafe:'Возьмите то, что ещё ни разу не пробовали.',
+  bar:'Попросите бармена сделать что-нибудь на его вкус.',
+  market:'Каждый берёт своё, а потом пробуете друг у друга.',
+};
+// какие места подходят под настроение (вес = как часто предлагать)
+const MOOD_W = {
+  cozy:   {museum:2,gallery:2,cinema:3,books:2,banya:2,anticafe:3,park:1,arts:1,concert:1},
+  fun:    {bowling:3,karaoke:3,quest:3,arcade:2,rink:2,comedy:3,trampoline:2,club:1,anticafe:2,waterpark:1,cinema:1,fun:2},
+  romance:{theatre:3,planetarium:3,gallery:2,viewpoint:3,rink:2,park:2,concert:2,cinema:2,museum:1},
+  deep:   {museum:3,gallery:3,theatre:3,planetarium:2,arts:2,books:2,concert:2},
+  adv:    {quest:3,climbing:3,rink:2,viewpoint:2,attraction:2,zoo:1,waterpark:2,trampoline:2,arcade:1,fun:2},
+};
+const ACTIVE = ['rink','climbing','trampoline','waterpark','quest','bowling'];
+const FREEISH = {park:3,viewpoint:3,gallery:2,books:2,attraction:2,arts:1};
+const EVENT_MOOD = {
+  cozy:['exhibition','cinema','education','permanent-exhibitions'],
+  fun:['party','entertainment','stand-up','comedy-club','games','concert','festival','quest','kvn'],
+  romance:['concert','theater','romance','ball','exhibition','evening'],
+  deep:['theater','exhibition','education','tour','permanent-exhibitions','open'],
+  adv:['quest','tour','festival','entertainment','night','games'],
+};
+const EVENT_KIND = {concert:'Концерт',theater:'Спектакль',exhibition:'Выставка','permanent-exhibitions':'Выставка',festival:'Фестиваль',
+  party:'Вечеринка',cinema:'Кино',education:'Лекция или мастер-класс',quest:'Квест',tour:'Экскурсия',kids:'Детям',
+  entertainment:'Развлечения','stand-up':'Стендап','comedy-club':'Стендап',games:'Игры',circus:'Цирк',ball:'Бал',holiday:'Праздник'};
+
+function activityWeights(){
+  let w = Object.assign({}, MOOD_W[state.mood]);
+  if(state.budget==='free'){ w = Object.assign({}, FREEISH); if(state.mood==='deep'||state.mood==='cozy') w.museum = .5; }
+  if(state.budget==='low'){ delete w.waterpark; if(w.quest) w.quest*=.5; if(w.banya) w.banya*=.5; }
+  if(state.who==='family'){ ['club','karaoke','comedy','banya'].forEach(k=>delete w[k]);
+    if(state.budget!=='free') Object.assign(w,{zoo:2,planetarium:2,museum:2}, state.energy!=='low'?{trampoline:2}:{}); }
+  if(state.who==='solo'){ ['quest','bowling','karaoke'].forEach(k=>{ if(w[k]) w[k]*=.3; }); }
+  if(state.energy==='low') ACTIVE.forEach(k=>delete w[k]);
+  if(state.energy==='high') ACTIVE.forEach(k=>{ if(w[k]) w[k]*=2; });
+  return w;
+}
+function foodWeights(){
+  let w;
+  if(state.budget==='free') w = {cafe:3,market:1};
+  else if(state.budget==='low') w = {cafe:3,market:2,bar:1,restaurant:1};
+  else w = {restaurant:3,bar:1,cafe:1,market:1};
+  if(state.mood==='romance' && state.budget!=='free'){ w.restaurant=(w.restaurant||0)+2; delete w.market; }
+  if(state.mood==='fun' && state.budget!=='free') w.bar=(w.bar||0)+2;
+  if(state.who==='friends' && state.budget!=='free') w.bar=(w.bar||0)+1;
+  if(state.who==='solo') w.cafe=(w.cafe||0)+2;
+  if(state.who==='family') delete w.bar;
+  return w;
+}
+
+function dist(a,b,c,d){ const p=Math.PI/180, x=(d-b)*p*Math.cos((a+c)/2*p), y=(c-a)*p; return 6371*Math.sqrt(x*x+y*y); }
+function radiusKm(){ return state.origin ? RADII.find(r=>r[0]===state.radius)[2] : 1e9; }
+const seen = {}; // чтобы при перекручивании варианты не повторялись
+
+// выбирает место: сначала категорию по весам, потом одно из лучших в ней
+function pickPlace(weights, anchor, maxKm, slot){
+  const groups = {};
+  for(const p of DATA.places){
+    const w = weights[p.k]; if(!w) continue;
+    if(state.budget==='free' && p.k==='museum' && !p.f) continue;
+    if(anchor && maxKm<1e8 && dist(anchor.la,anchor.lo,p.la,p.lo)>maxKm) continue;
+    (groups[p.k]=groups[p.k]||[]).push(p);
+  }
+  const kinds = Object.keys(groups); if(!kinds.length) return null;
+  const sset = seen[slot] = seen[slot] || new Set();
+  // убираем уже показанные; если кончились все варианты — начинаем круг заново
+  let fresh = {}; kinds.forEach(k=>{ const f=groups[k].filter(p=>!sset.has(p)); if(f.length) fresh[k]=f; });
+  if(!Object.keys(fresh).length){ sset.clear(); fresh = groups; }
+  const ks = Object.keys(fresh);
+  let total = ks.reduce((s,k)=>s+weights[k],0), r = Math.random()*total, kind = ks[0];
+  for(const k of ks){ r-=weights[k]; if(r<=0){ kind=k; break; } }
+  const list = fresh[kind].slice().sort((a,b)=>b.s-a.s);
+  const top = list.slice(0, Math.max(8, Math.min(60, Math.ceil(list.length*.35))));
+  const p = top[Math.floor(Math.random()*top.length)];
+  sset.add(p); return p;
+}
+
+// ---------- события ----------
+const MSK = 3*3600;
+function dayWindow(){
+  const now = Math.floor(Date.now()/1000);
+  const d = new Date((now+MSK)*1000);
+  const start = Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())/1000 - MSK; // полночь по Москве
+  if(state.day==='today') return [now-1800, start+86400+4*3600, now];
+  if(state.day==='tomorrow') return [start+86400, start+2*86400+4*3600, now];
+  const wd = d.getUTCDay(); // 0 вс … 6 сб
+  if(wd===6) return [now-1800, start+2*86400, now];
+  if(wd===0) return [now-1800, start+86400, now];
+  const sat = start+(6-wd)*86400; return [sat, sat+2*86400, now];
+}
+// возвращает подходящий сеанс события [start,end,long] или null
+function eventSlot(e, win){
+  for(const [s,en] of e.d){
+    const long = en-s > 36*3600;
+    if(long){ if(s<win[1] && en>Math.max(win[0],win[2])) return [s,en,true]; }
+    else if(s>=win[0] && s<win[1]) return [s,en,false];
+  }
+  return null;
+}
+function pickEvent(anchor, maxKm){
+  if(!DATA.events || !DATA.events.length) return null;
+  const win = dayWindow(), mood = EVENT_MOOD[state.mood], cands = [];
+  for(const e of DATA.events){
+    const sl = eventSlot(e, win); if(!sl) continue;
+    if(state.budget==='free' && !e.fr) continue;
+    if(state.who==='family' && ((e.ag||0)>=16 || e.k.some(k=>['party','night','stand-up','comedy-club'].includes(k)))) continue;
+    if(state.who!=='family' && e.k.every(k=>k==='kids'||k==='circus')) continue;
+    if(anchor && maxKm<1e8){ if(e.la==null || dist(anchor.la,anchor.lo,e.la,e.lo)>maxKm) continue; }
+    let w = e.k.some(k=>mood.includes(k)) ? 3 : .4;
+    if(state.who==='family' && e.k.includes('kids')) w = 3;
+    if(sl[2]) w *= .6;                       // длинные выставки чуть реже, чем события «именно сегодня»
+    w *= 1 + Math.log2(1+(e.fav||0))/4;      // популярные на KudaGo — чаще
+    cands.push({e, sl, w});
+  }
+  if(!cands.length) return null;
+  const sset = seen.event = seen.event || new Set();
+  let pool = cands.filter(c=>!sset.has(c.e)); if(!pool.length){ sset.clear(); pool = cands; }
+  let r = Math.random()*pool.reduce((s,c)=>s+c.w,0), ch = pool[0];
+  for(const c of pool){ r-=c.w; if(r<=0){ ch=c; break; } }
+  sset.add(ch.e); return ch;
+}
+
+// =====================================================================
+//  Сборка вечера
+// =====================================================================
+function fits(item){
+  const tags = item[2].split(' '), byDim = {};
+  tags.forEach(t=>{const d=TAGS[t]; if(d){(byDim[d]=byDim[d]||[]).push(t);}});
+  for(const d in byDim){ if(!byDim[d].includes(state[d])) return 0; }
+  if(tags.includes('ACTIVE') && state.energy==='low') return 0;
+  if(tags.includes('LAZY') && state.energy==='high' && Math.random()<.6) return 0;
+  if(tags.includes('PRICEY') && state.budget!=='high') return 0;
+  return byDim.mood ? 2 : 1;
+}
+function pickIdea(list, avoid){
+  let pool = list.map(i=>[i,fits(i)]).filter(x=>x[1]>0);
+  const strong = pool.filter(x=>x[1]===2);
+  if(strong.length>=2) pool = strong;
+  if(!pool.length) pool = list.map(i=>[i,1]);
+  let cand = pool.filter(x=>!avoid||x[0][0]!==avoid);
+  if(!cand.length) cand = pool;
+  const it = cand[Math.floor(Math.random()*cand.length)][0];
+  return {type:'idea', t:it[0], n:it[1]};
+}
+const hasData = ()=> !!(DATA && DATA.places && DATA.places.length);
+function slots(){
+  if(state.place==='home') return [['watch','🎬 Посмотреть'],['food','🍳 Поесть'],['do','🎲 Занятие'],['music','🎧 Фоном играет'],['rule','✦ Правило вечера']];
+  const s = [['go','📍 Куда пойти']];
+  if(hasData() && DATA.events && DATA.events.length) s.push(['event','🎟 Или событие']);
+  s.push(['eat','🍜 Где поесть'],['music','🎧 Плейлист в дорогу'],['rule','✦ Правило вечера']);
+  return s;
+}
+let current = {}, locks = {};
+function anchorFor(k){
+  // еду ищем рядом с выбранным местом, остальное — рядом с точкой пользователя
+  if(k==='eat' && current.go && current.go.type==='place') return current.go.p;
+  return state.origin;
+}
+function rollSlot(k){
+  const prev = current[k];
+  if(k==='go'){
+    let p = hasData() ? pickPlace(activityWeights(), state.origin, radiusKm(), 'go') : null;
+    let far = false;
+    if(!p && hasData() && state.origin && radiusKm()<1e8){ p = pickPlace(activityWeights(), null, 1e9, 'go'); far = !!p; }
+    current.go = p ? {type:'place', p, far} : pickIdea(DB.go, prev&&prev.t);
+  } else if(k==='eat'){
+    let p = null;
+    if(hasData()){
+      const a = anchorFor('eat'), w = foodWeights();
+      const steps = a ? (current.go && current.go.type==='place' ? [1.2,2.5,5,1e9] : [radiusKm(),1e9]) : [1e9];
+      for(const km of steps){ p = pickPlace(w, a, km, 'eat'); if(p) break; }
+    }
+    current.eat = p ? {type:'place', p} : pickIdea(DB.eatout, prev&&prev.t);
+  } else if(k==='event'){
+    let c = pickEvent(state.origin, radiusKm());
+    if(!c && state.origin && radiusKm()<1e8) c = pickEvent(null, 1e9);
+    current.event = c ? {type:'event', e:c.e, sl:c.sl} : {type:'none'};
+  } else {
+    current[k] = pickIdea(DB[k], prev&&prev.t);
+  }
+}
+function generate(){
+  const ss = slots().map(s=>s[0]);
+  ss.forEach(k=>{ if(!locks[k] || !current[k]) rollSlot(k); });
+  render(true);
+}
+
+// =====================================================================
+//  Отрисовка
+// =====================================================================
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => /^https?:\/\//i.test(u||'') ? u : '';
+function yandex(p){
+  const q = encodeURIComponent(p.n + (p.a ? ', '+p.a : ', Москва'));
+  return `https://yandex.ru/maps/?text=${q}&ll=${p.lo}%2C${p.la}&z=17`;
+}
+function hoursRu(h){
+  if(!h) return '';
+  if(/^24\/7$/.test(h.trim())) return 'круглосуточно';
+  const map = {Mo:'пн',Tu:'вт',We:'ср',Th:'чт',Fr:'пт',Sa:'сб',Su:'вс',PH:'праздники',off:'выходной',closed:'закрыто'};
+  let s = h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|off|closed)\b/g, m=>map[m]).replace(/-/g,'–').replace(/;\s*/g,'; ');
+  return s.length>70 ? s.slice(0,68)+'…' : s;
+}
+function kmText(km){ return km<1 ? Math.round(km*100)*10+' м' : km.toFixed(1).replace('.',',')+' км'; }
+function fmtWhen(sl){
+  const tz = {timeZone:'Europe/Moscow'};
+  if(sl[2]) return 'идёт до '+new Date(sl[1]*1000).toLocaleDateString('ru-RU',Object.assign({day:'numeric',month:'long'},tz));
+  const d = new Date(sl[0]*1000);
+  return d.toLocaleDateString('ru-RU',Object.assign({weekday:'short',day:'numeric',month:'long'},tz))+', '+
+         d.toLocaleTimeString('ru-RU',Object.assign({hour:'2-digit',minute:'2-digit'},tz));
+}
+function placeHtml(k, p, isFar){
+  const meta = [];
+  if(p.a) meta.push(`<div><span>Адрес:</span> ${esc(p.a)}</div>`);
+  if(p.m) meta.push(`<div><span>Метро:</span> ${esc(p.m)}${p.md!=null?' · '+kmText(p.md):''}</div>`);
+  if(p.h) meta.push(`<div><span>Часы:</span> ${esc(hoursRu(p.h))}</div>`);
+  const a = anchorFor(k);
+  if(a && a!==p){ const d = dist(a.la,a.lo,p.la,p.lo);
+    meta.push(`<div><span>${k==='eat'&&a!==state.origin?'От первого места':'От вас'}:</span> ${kmText(d)}</div>`); }
+  const links = [`<a href="${esc(yandex(p))}" target="_blank" rel="noopener">Отзывы на Яндекс Картах ↗</a>`];
+  if(safeUrl(p.w)) links.push(`<a class="sec" href="${esc(p.w)}" target="_blank" rel="noopener">Сайт</a>`);
+  if(safeUrl(p.kg)) links.push(`<a class="sec" href="${esc(p.kg)}" target="_blank" rel="noopener">KudaGo</a>`);
+  const far = (k==='go' && isFar) ? '<div class="note" style="margin-top:6px">Рядом ничего подходящего не нашлось, поэтому вариант подальше.</div>' : '';
+  return `<div><span class="tag">${esc(KIND[p.k]||'Место')}</span>${p.c?`<span class="tag">${esc(p.c)}</span>`:''}${p.f?'<span class="tag">вход свободный</span>':''}</div>
+    <div class="main">${esc(p.n)}</div><div class="note">${esc(p.d || TIP[p.k] || '')}</div>${far}
+    <div class="meta">${meta.join('')}</div><div class="links">${links.join('')}</div>`;
+}
+function eventHtml(c){
+  const e = c.e, kind = e.k.map(k=>EVENT_KIND[k]).find(Boolean) || 'Событие', meta = [];
+  meta.push(`<div><span>Когда:</span> ${esc(fmtWhen(c.sl))}</div>`);
+  if(e.p) meta.push(`<div><span>Где:</span> ${esc(e.p)}${e.a?', '+esc(e.a):''}</div>`);
+  if(e.fr) meta.push('<div><span>Цена:</span> бесплатно</div>'); else if(e.pr) meta.push(`<div><span>Цена:</span> ${esc(e.pr)}</div>`);
+  if(state.origin && e.la!=null) meta.push(`<div><span>От вас:</span> ${kmText(dist(state.origin.la,state.origin.lo,e.la,e.lo))}</div>`);
+  return `<div><span class="tag">${esc(kind)}</span>${e.ag?`<span class="tag">${e.ag}+</span>`:''}</div>
+    <div class="main">${esc(e.t)}</div><div class="meta">${meta.join('')}</div>
+    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее и билеты ↗</a>`:''}</div>`;
+}
+function render(anim){
+  const out = document.getElementById('out');
+  out.innerHTML = '<div class="grid">'+slots().map(([k,title])=>{
+    const it = current[k]; if(!it) return '';
+    let body;
+    if(it.type==='place') body = placeHtml(k, it.p, it.far);
+    else if(it.type==='event') body = eventHtml(it);
+    else if(it.type==='none') body = `<div class="note">На этот день в афише не нашлось ничего подходящего под ваши условия. Попробуйте другой день или радиус.</div>`;
+    else body = `<div class="main">${esc(it.t)}</div><div class="note">${esc(it.n)}</div>`;
+    return `<div class="card${k==='rule'?' wide':''}${locks[k]?' locked':''}${anim?' fade':''}" data-k="${k}">
+      <div class="ctop"><span class="ctitle">${title}</span>
+        <span class="btns">
+          <button class="ib" data-act="lock" aria-pressed="${!!locks[k]}" title="Закрепить" aria-label="Закрепить">${locks[k]?'🔒':'🔓'}</button>
+          <button class="ib" data-act="roll" title="Другой вариант" aria-label="Другой вариант">↻</button>
+        </span></div>${body}</div>`;
+  }).join('')+'</div>';
+  document.getElementById('foot').hidden = false;
+}
+document.getElementById('out').addEventListener('click',e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  const k = b.closest('.card').dataset.k;
+  if(b.dataset.act==='lock'){ locks[k]=!locks[k]; render(false); return; }
+  rollSlot(k);
+  if(k==='go' && !locks.eat && current.eat) rollSlot('eat'); // еда подтягивается к новому месту
+  render(false);
+  [k].concat(k==='go'?['eat']:[]).forEach(x=>{ const c=document.querySelector(`.card[data-k="${x}"]`); if(c) c.classList.add('fade'); });
+});
+
+// ---------- панель параметров ----------
+const ctl = document.getElementById('controls');
+function drawControls(){
+  const out = state.place==='out';
+  let h = DIMS.map(d=>`<div class="row${d.out?' outonly':''}"${d.out&&!out?' hidden':''}><span class="label">${d.label}</span><div class="chips">${
+    d.opts.map(o=>`<button class="chip" data-d="${d.key}" data-v="${o[0]}" aria-pressed="${state[d.key]===o[0]}">${o[1]}</button>`).join('')
+  }</div></div>`).join('');
+  const hasMetro = DATA && DATA.metro && DATA.metro.length;
+  h += `<div class="row outonly"${out&&hasData()?'':' hidden'}><span class="label">Рядом с</span><div class="chips">
+      ${hasMetro?`<input class="metro" id="metro" list="metrolist" placeholder="станция метро" autocomplete="off" value="${esc(state.origin&&state.origin.metro?state.origin.name:'')}">`:''}
+      <button class="chip" id="geo" aria-pressed="${!!(state.origin&&!state.origin.metro)}">📍 Рядом со мной</button>
+      ${state.origin?'<button class="chip" id="noorigin">✕ Сбросить</button>':''}
+    </div>
+    ${state.origin?`<div class="where">Ищу рядом: ${esc(state.origin.name)}</div>`:''}</div>`;
+  h += `<div class="row outonly"${out&&hasData()&&state.origin?'':' hidden'}><span class="label">Как далеко</span><div class="chips">${
+    RADII.map(r=>`<button class="chip" data-d="radius" data-v="${r[0]}" aria-pressed="${state.radius===r[0]}">${r[1]}</button>`).join('')}</div></div>`;
+  ctl.innerHTML = h;
+}
+function setOrigin(o){ state.origin = o; Object.keys(seen).forEach(k=>delete seen[k]); save(); drawControls(); }
+ctl.addEventListener('click',e=>{
+  const c = e.target.closest('.chip'); if(!c) return;
+  if(c.id==='geo'){
+    if(!navigator.geolocation){ toast('Браузер не умеет определять местоположение'); return; }
+    toast('Определяю, где вы…');
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ setOrigin({name:'ваше местоположение', la:pos.coords.latitude, lo:pos.coords.longitude}); toast('Готово, ищу рядом с вами'); },
+      ()=>toast('Не получилось определить место. Выберите станцию метро'), {timeout:8000, maximumAge:600000});
+    return;
+  }
+  if(c.id==='noorigin'){ setOrigin(null); return; }
+  state[c.dataset.d] = c.dataset.v; save(); drawControls();
+});
+ctl.addEventListener('change',e=>{
+  if(e.target.id!=='metro') return;
+  const v = e.target.value.trim().toLowerCase().replace(/ё/g,'е');
+  if(!v){ setOrigin(null); return; }
+  const list = DATA.metro, norm = s=>s.toLowerCase().replace(/ё/g,'е');
+  const m = list.find(x=>norm(x[0])===v) || list.find(x=>norm(x[0]).startsWith(v)) || list.find(x=>norm(x[0]).includes(v));
+  if(m) setOrigin({name:'м. '+m[0], metro:1, la:m[1], lo:m[2]});
+  else toast('Не нашёл такую станцию');
+});
+
+document.getElementById('go').onclick = generate;
+document.getElementById('reset').onclick = ()=>{ locks={}; render(false); };
+document.getElementById('copy').onclick = async ()=>{
+  const lines = slots().map(([k,t])=>{
+    const it = current[k]; if(!it || it.type==='none') return '';
+    const head = t.replace(/^\S+\s/,'');
+    if(it.type==='place') return `${head}: ${it.p.n}${it.p.a?' ('+it.p.a+')':''}${it.p.m?', м. '+it.p.m:''}\n${yandex(it.p)}`;
+    if(it.type==='event') return `${head}: ${it.e.t}. ${fmtWhen(it.sl)}${it.e.p?', '+it.e.p:''}\n${it.e.u}`;
+    return `${head}: ${it.t}. ${it.n}`;
+  }).filter(Boolean);
+  try{ await navigator.clipboard.writeText('План на вечер:\n'+lines.join('\n')); toast('Скопировано, можно отправить в чат'); }
+  catch(e){ toast('Не получилось скопировать'); }
+};
+let toastTimer;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
+
+// ---------- загрузка базы ----------
+function credits(){
+  let h = '';
+  if(hasData()){
+    const d = new Date(DATA.updated);
+    const when = isNaN(d) ? '' : d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+    h += `Мест в базе: ${DATA.places.length.toLocaleString("ru-RU")} · событий: ${(DATA.events||[]).length.toLocaleString("ru-RU")}${when?' · обновлено '+when:''}<br>`;
+  }
+  h += 'Места: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL) · события и подборки: <a href="https://kudago.com/msk/" target="_blank" rel="noopener">KudaGo</a><br>Часы работы и адреса могут устареть. Перед выходом проверьте место по ссылке на карты.';
+  document.getElementById('credits').innerHTML = h;
+}
+function banner(){
+  const b = document.getElementById('banner');
+  if(!hasData()) b.innerHTML = '<div class="banner">База мест пока не загрузилась, поэтому для города показываю общие идеи. Режим «Дома» работает полностью.</div>';
+  else if(DATA.demo) b.innerHTML = '<div class="banner">Сейчас в базе демо-набор из нескольких десятков известных мест. Полная база Москвы появится после первого автоматического обновления.</div>';
+  else b.innerHTML = '';
+}
+function init(){
+  if(DATA && DATA.metro) document.getElementById('metrolist').innerHTML = DATA.metro.map(m=>`<option value="${esc(m[0])}">`).join('');
+  if(state.origin && state.origin.metro && !(DATA && DATA.metro && DATA.metro.length)) state.origin = null;
+  drawControls(); banner(); credits();
+}
+init();
+fetch('data/places.json', {cache:'no-cache'})
+  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d=>{ if(d && Array.isArray(d.places)){ DATA = d; init(); } })
+  .catch(()=>{});
+</script>
+</body>
+</html>
