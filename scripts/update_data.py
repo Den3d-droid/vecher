@@ -205,7 +205,7 @@ CHAINS = ("шоколадница", "кофе хауз", "starbucks", "stars cof
           "братья караваевы", "хлеб насущный", "cinnabon", "синнабон", "dunkin", "чайхона №1", "шикари",
           "планета суши", "ёбидоёби", "суши wok", "суши вок", "правда кофе", "surf coffee", "даблби",
           "double b", "кофемания", "буханка", "волконский", "кулинарная лавка", "жан-жак", "елки-палки",
-          "ёлки-палки", "столовая", "вареничная №1", "chaihona")
+          "ёлки-палки", "столовая", "вареничная №1", "chaihona", "мир шашлыков", "шашлычный мир", "тануки", "бургер кинг", "чайхона №1", "андерсон", "anderson", "кофикс", "хинкальная №1" , "pizza hut", "il forno", "торро гриль", "корчма тарас бульба", "урюк", "кофе хауз", "costa coffee", "paul", "вкусвилл", "restoran-bar", "грабли")
 
 
 def osm_kind(t):
@@ -238,12 +238,8 @@ def osm_score(t, kind):
                 "start_date", "heritage", "name:en", "level"):
         if t.get(key):
             s += 0.5
-    name = (t.get("name") or "").lower().replace("ё", "е")
-    if kind in ("restaurant", "cafe", "bar", "market"):
-        if any(c.replace("ё", "е") in name for c in CHAINS):
-            s -= 6
-        elif t.get("brand") or t.get("brand:wikidata"):
-            s -= 3
+    if kind in ("restaurant", "cafe", "bar", "market") and (t.get("brand") or t.get("brand:wikidata")):
+        s -= 6      # сеть, которой нет в списке CHAINS
     return s
 
 
@@ -281,6 +277,11 @@ def osm_place(el, today):
         return None
     if t.get("access") in ("private", "no") or t.get("opening_hours") in ("closed", "off"):
         return None
+    # крупные сети в подборку «куда сходить вечером» не берём
+    if kind in ("restaurant", "cafe", "bar"):
+        flat = re.sub(r"\s+", " ", name.lower().replace("ё", "е").replace("\u00a0", " ")).replace("№ ", "№")
+        if any(c.replace("ё", "е") in flat for c in CHAINS):
+            return None
     # явные признаки закрытия
     if any(k.split(":")[0] in ("disused", "abandoned", "demolished", "removed", "was", "razed", "construction") for k in t):
         return None
@@ -407,7 +408,8 @@ SPHERES = [("выстав", "exhibition"), ("спектакл", "theater"), ("т
            ("кино", "cinema"), ("фестивал", "festival"), ("праздник", "festival"), ("ярмар", "festival"),
            ("спорт", "sport"), ("каток", "sport"), ("катк", "sport"), ("для детей", "kids"), ("детям", "kids"),
            ("зоопарк", "kids"), ("парк", "park"), ("шоу", "show"), ("цирк", "show"), ("стендап", "show"),
-           ("танц", "party"), ("вечерин", "party")]
+           ("танц", "party"), ("вечерин", "party"), ("представлен", "show"), ("чтени", "lecture"),
+           ("досуг", "festival"), ("новый год", "festival"), ("зима в москве", "festival")]
 # это не события, а услуги и технические метки
 SPHERE_SKIP = ("бронирование", "дополнительные услуги", "аренда", "долголетие", "абонемент", "услуг")
 
@@ -442,14 +444,15 @@ def fetch_mos_events(now):
         spheres = [str(x.get("title") or "").lower() for x in (r.get("spheres") or []) if isinstance(x, dict)]
         if not title or r.get("ebs_type") == "membership" or any(k in sp for sp in spheres for k in SPHERE_SKIP):
             continue
+        if re.match(r"^(комплексн|единый билет|входной билет|абонемент)", title.lower()):
+            continue
         cats = []
         for sp in spheres:
-            for key, cat in SPHERES:
-                if key in sp and cat not in cats:
-                    cats.append(cat)
-                    break
-            else:
+            cat = next((c for key, c in SPHERES if key in sp), None)
+            if cat is None:
                 skipped[sp] = skipped.get(sp, 0) + 1
+            elif cat not in cats:
+                cats.append(cat)
         if not cats:
             cats = ["other"]
         s, e = msk_ts(r.get("date_from")), msk_ts(r.get("date_to"))

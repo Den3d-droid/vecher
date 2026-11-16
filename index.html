@@ -459,8 +459,14 @@ function pickEvent(anchor, maxKm){
   if(!cands.length) return null;
   const sset = seen.event = seen.event || new Set();
   let pool = cands.filter(c=>!sset.has(c.e)); if(!pool.length){ sset.clear(); pool = cands; }
-  let r = Math.random()*pool.reduce((s,c)=>s+c.w,0), ch = pool[0];
-  for(const c of pool){ r-=c.w; if(r<=0){ ch=c; break; } }
+  // сначала выбираем тип события по весам, потом случайное событие этого типа:
+  // иначе сотни мастер-классов вытесняют редкие концерты и спектакли
+  const groups = {};
+  pool.forEach(c=>{ const k = c.e.k.find(x=>mood.includes(x)) || c.e.k[0]; const g = groups[k] = groups[k] || {w:0, list:[]}; g.w = Math.max(g.w, c.w); g.list.push(c); });
+  const ks = Object.keys(groups);
+  let r = Math.random()*ks.reduce((s,k)=>s+groups[k].w,0), kind = ks[0];
+  for(const k of ks){ r-=groups[k].w; if(r<=0){ kind=k; break; } }
+  const list = groups[kind].list, ch = list[Math.floor(Math.random()*list.length)];
   sset.add(ch.e); return ch;
 }
 
