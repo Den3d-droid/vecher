@@ -66,13 +66,34 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
 .banner{background:var(--panel2);border:1px dashed var(--accent);color:var(--text);border-radius:14px;padding:12px 16px;font-size:14px;margin-bottom:16px}
 .credits{margin-top:48px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
 .credits a{color:var(--muted)}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#1a120a;padding:10px 18px;border-radius:12px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:5;max-width:90vw;text-align:center}
+.topnav{display:flex;justify-content:flex-end;gap:8px;margin:-24px 0 18px}
+.ghost.small{padding:7px 14px;font-size:14px}
+.modal{position:fixed;inset:0;background:rgba(10,8,6,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;z-index:10;overflow:auto}
+.modal[hidden]{display:none}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:20px;width:100%;max-width:720px;padding:22px}
+.sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.sheet h2{font-family:"Playfair Display",serif;font-weight:600;font-size:28px}
+.sheet h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:18px 0 8px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.fitem{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--line);padding:12px 0}
+.fitem .ft{font-weight:700}.fitem .fs{color:var(--muted);font-size:13px;white-space:pre-line}
+.fitem a{color:var(--accent);font-size:13px}
+.field{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.field input,.field textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:9px 12px;font:inherit;font-size:14px}
+.field textarea{width:100%;min-height:70px;font-size:12px}
+.muted{color:var(--muted);font-size:14px}
+.ib.fav[aria-pressed="true"]{background:#e8556b;border-color:#e8556b;color:#fff}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#1a120a;padding:10px 18px;border-radius:12px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
 @media (max-width:560px){.label{width:100%}.wrap{padding-top:32px}.where{padding-left:0;margin-top:0}}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="topnav">
+    <button class="ghost small" id="openFav">❤️ Избранное <span id="favCount"></span></button>
+    <button class="ghost small" id="openSet">⚙️ Настройки</button>
+  </nav>
   <header>
     <div class="kicker">Москва · сегодня вечером</div>
     <h1>Генератор <em>вечера</em></h1>
@@ -87,6 +108,7 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
   <section id="out"><p class="empty">Нажмите кнопку, и вечер сложится сам. Понравившиеся пункты можно закрепить 🔒, а остальные перекрутить ↻.</p></section>
 
   <div class="foot" id="foot" hidden>
+    <button class="ghost" id="savePlan">💾 Сохранить вечер</button>
     <button class="ghost" id="copy">📋 Скопировать план</button>
     <button class="ghost" id="reset">Снять все замки</button>
     <button class="ghost" id="unhide" hidden></button>
@@ -94,6 +116,10 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
 
   <div class="credits" id="credits"></div>
 </div>
+<div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true">
+  <div class="sheethead"><h2 id="mTitle"></h2><button class="ib" id="mClose" aria-label="Закрыть">✕</button></div>
+  <div id="mBody"></div>
+</div></div>
 <datalist id="metrolist"></datalist>
 <div class="toast" id="toast"></div>
 
@@ -137,6 +163,22 @@ const CUISINES = [
   ['beer','Пиво и вино',['пиво','вино','коктейл']],
 ];
 const PC_LABEL = ['обычно бесплатно','обычно недорого','средние цены','обычно дорого'];
+// примерный средний чек на человека, ₽: [тип][уровень цен 1…4]
+const CHECK = {
+  cafe:       [null,[350,800],[800,1500],[1500,2500],[2500,4000]],
+  restaurant: [null,[700,1300],[1300,2500],[2500,4500],[5000,9000]],
+  bar:        [null,[700,1500],[1500,2500],[2500,4000],[4000,6000]],
+  market:     [null,[700,1500],[1000,2000],[1500,3000],[2500,4000]],
+};
+const rub = n => n.toLocaleString('ru-RU').replace(/\u00a0/g,'\u202f');
+function avgCheck(p){
+  const t = CHECK[p.k]; if(!t) return '';
+  let lvl = p.pl || (p.pc==null ? 2 : Math.max(1, p.pc));
+  const c = p.c || '';
+  if(p.k==='cafe' && /кофейня|выпечка|пончики|мороженое|бабл/.test(c) && !p.pl) lvl = 1;
+  const r = t[Math.min(4, lvl)];
+  return `≈ ${rub(r[0])}–${rub(r[1])} ₽`;
+}
 const state = {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('evening-state-v2')||'{}')); }catch(e){}
 if(!Array.isArray(state.want)) state.want = [];
@@ -255,20 +297,37 @@ const DB = {
   ['Позвонить человеку, с которым давно не говорили','Не написать, а именно позвонить.','deep cozy solo low'],
  ],
  music:[
-  ['Джаз 50-х','Чет Бейкер, Билл Эванс, Майлз Дэвис.','cozy romance deep'],
-  ['Lo-fi hip hop','Ненавязчивый фон, под который хорошо думается.','cozy deep'],
-  ['Советская эстрада 70-х','Тёплая и немного смешная ностальгия.','fun cozy'],
-  ['Саундтреки Ханса Циммера','Почувствовать себя главным героем.','adv deep'],
-  ['Синти-поп 80-х','Неоновое настроение, хочется двигаться.','fun adv'],
-  ['Босса-нова','Жоао Жилберту и Антониу Карлос Жобим. Лето в любую погоду.','romance cozy'],
-  ['Русский рок 90-х','Кино, Сплин, Чайф. Под гитару, если есть.','fun deep'],
-  ['Ноктюрны Шопена','Свечи сами просятся к такой музыке.','romance deep'],
-  ['Фанк и диско','Earth, Wind & Fire. Невозможно усидеть на месте.','fun adv'],
-  ['Эмбиент: Брайан Ино','Музыка как обои, в хорошем смысле.','deep cozy'],
-  ['Французский шансон','Эдит Пиаф, Шарль Азнавур, Ив Монтан.','romance cozy'],
-  ['Инди-фолк','Bon Iver, Iron & Wine, Fleet Foxes.','cozy deep romance'],
-  ['Хиты 2000-х','Можно подпевать, даже если вы стесняетесь.','fun'],
-  ['Музыка из игр','Саундтреки Journey и Hollow Knight.','adv deep cozy'],
+  // [название, пояснение, теги, что искать в музыкальном сервисе]
+  ['Джаз 50-х','Чет Бейкер, Билл Эванс, Майлз Дэвис.','cozy romance deep','Chet Baker Bill Evans Miles Davis'],
+  ['Lo-fi hip hop','Ненавязчивый фон, под который хорошо думается.','cozy deep','lofi hip hop'],
+  ['Советская эстрада 70-х','Тёплая и немного смешная ностальгия.','fun cozy','советская эстрада 70-х'],
+  ['Саундтреки Ханса Циммера','Почувствовать себя главным героем.','adv deep','Hans Zimmer'],
+  ['Синти-поп 80-х','Неоновое настроение, хочется двигаться.','fun adv','synthpop 80s'],
+  ['Босса-нова','Жоао Жилберту и Антониу Карлос Жобим. Лето в любую погоду.','romance cozy','bossa nova Jobim Gilberto'],
+  ['Русский рок 90-х','Кино, Сплин, Чайф. Под гитару, если есть.','fun deep','русский рок 90-х'],
+  ['Ноктюрны Шопена','Свечи сами просятся к такой музыке.','romance deep','Chopin Nocturnes'],
+  ['Фанк и диско','Earth, Wind & Fire. Невозможно усидеть на месте.','fun adv','funk disco Earth Wind Fire'],
+  ['Эмбиент: Брайан Ино','Музыка как обои, в хорошем смысле.','deep cozy','Brian Eno Music for Airports'],
+  ['Французский шансон','Эдит Пиаф, Шарль Азнавур, Ив Монтан.','romance cozy','Edith Piaf Charles Aznavour'],
+  ['Инди-фолк','Bon Iver, Iron & Wine, Fleet Foxes.','cozy deep romance','Bon Iver Iron & Wine Fleet Foxes'],
+  ['Хиты 2000-х','Можно подпевать, даже если вы стесняетесь.','fun','хиты 2000-х'],
+  ['Музыка из игр','Саундтреки Journey и Hollow Knight.','adv deep cozy','Journey Hollow Knight soundtrack'],
+  ['Нео-соул','Эрика Баду, D\'Angelo, Jordan Rakei. Бархатный вечер.','romance cozy','neo soul Erykah Badu D\'Angelo'],
+  ['Итальянская эстрада','Челентано, Тото Кутуньо, Риккарди. Хочется в Рим.','fun romance','Adriano Celentano Toto Cutugno'],
+  ['Сити-поп','Японский поп 80-х: Мариа Такэути, Тацуро Ямасита.','fun cozy romance','city pop Mariya Takeuchi Tatsuro Yamashita'],
+  ['Классика для тех, кто не слушает классику','Вивальди, Моцарт, Дебюсси: всё узнаваемое.','deep romance cozy','Debussy Clair de Lune Vivaldi'],
+  ['Лаунж и ню-джаз','St Germain, Nightmares on Wax. Как в хорошем баре.','cozy romance','St Germain Nightmares on Wax'],
+  ['Инди 2010-х','Arctic Monkeys, The xx, Tame Impala.','fun adv','Arctic Monkeys The xx Tame Impala'],
+  ['Песни из советских фильмов','«Ирония судьбы», «Служебный роман», «Д\'Артаньян».','cozy fun','песни из советских фильмов'],
+  ['Фортепиано: неоклассика','Людовико Эйнауди, Нильс Фрам, Олафур Арнальдс.','deep cozy','Ludovico Einaudi Nils Frahm Olafur Arnalds'],
+  ['Регги','Боб Марли и солнце, которого так не хватает.','fun cozy','Bob Marley'],
+  ['Блюз','Би Би Кинг, Мадди Уотерс, Гэри Мур.','deep romance','B.B. King Muddy Waters Gary Moore'],
+  ['Русский инди','Мумий Тролль, Земфира, Pompeya, Хадн Дадн.','fun deep','Земфира Мумий Тролль Хадн Дадн'],
+  ['Латино','Сальса, бачата и немного Шакиры. Танцевать на кухне.','fun romance adv','salsa bachata latino hits'],
+  ['Электроника для фокуса','Bonobo, Tycho, Four Tet.','deep adv','Bonobo Tycho Four Tet'],
+  ['Детские песни, которые нравятся взрослым','Шаинский, «Бременские музыканты», «Простоквашино».','family fun cozy','песни из советских мультфильмов'],
+  ['Мюзиклы','«Ла-Ла Ленд», «Величайший шоумен», «Мамма Миа».','fun romance family','La La Land Greatest Showman Mamma Mia soundtrack'],
+  ['Ретро-рок-н-ролл','Элвис, Чак Берри, Литл Ричард.','fun adv','Elvis Presley Chuck Berry Little Richard'],
  ],
  rule:[
   ['Телефоны в коробку до конца вечера','Кто первым достанет, тот моет посуду.','duo friends family'],
@@ -284,6 +343,48 @@ const DB = {
   ['Горячий душ с музыкой перед стартом','Перезагрузка из рабочего режима в вечерний.','solo cozy'],
   ['Никаких разговоров о работе','За каждое нарушение один отжим.','duo friends'],
   ['Комплимент каждому за столом','Конкретный, а не дежурный.','duo friends family romance'],
+  ['Каждый выбирает по одной песне в общий плейлист','И объясняет, почему именно её.','duo friends family'],
+  ['Говорить только «да» на предложения','В пределах разумного. Главное — не отказываться от идей.','fun adv duo friends'],
+  ['Вопрос дня: «Что тебя сейчас по-настоящему радует?»','Каждый отвечает честно, без «да всё нормально».','deep duo friends family'],
+  ['Кто опоздал, тот рассказывает анекдот','Не смешной — рассказывает второй.','fun friends'],
+  ['Никаких сериалов фоном','Если смотрим, то смотрим. Если говорим, то говорим.','duo family cozy deep'],
+  ['Один человек — ведущий вечера','Он решает, что дальше, и его нельзя оспаривать до полуночи.','fun friends family duo'],
+  ['Фото без лиц','Снимайте руки, тени, отражения. Самый необычный кадр выигрывает.','adv fun friends duo'],
+  ['Каждый приносит вопрос, на который не знает ответа','И вместе пытаетесь до него докопаться.','deep friends duo'],
+  ['Запрет на слово «нормально»','Описывайте всё точнее. За нарушение — фант.','fun friends family duo'],
+  ['Вечер медленного темпа','Никуда не торопиться: ни в разговоре, ни в еде, ни в дороге.','cozy deep romance solo duo'],
+  ['Вспомнить первую встречу','Каждый рассказывает свою версию. Обычно они сильно расходятся.','romance duo friends'],
+  ['Кто готовит, тот не моет','Справедливость прежде всего.','duo family friends'],
+  ['Задать друг другу три вопроса из детства','Кем хотел стать, чего боялся, что любил есть.','deep duo friends family romance'],
+  ['Счёт за ужин — по жребию','Пусть решит монетка. Или камень-ножницы-бумага.','fun friends duo adv'],
+  ['Сегодня пробуем то, что никто не заказывал раньше','Самое странное блюдо в меню.','adv fun duo friends'],
+  ['Никаких планов на завтра в разговоре','Только сегодня, только здесь.','cozy romance deep duo'],
+  ['Записать голосовое себе через год','Что происходит, что волнует, чего хочется.','deep solo duo'],
+  ['Сыграть в «Я никогда не…»','Без жести. Только безопасные и смешные признания.','fun friends'],
+  ['Каждый рассказывает о своём маленьком достижении','Даже если это «наконец разобрал шкаф».','cozy duo friends family'],
+  ['Минута благодарности','Перед едой каждый называет одну вещь, за которую благодарен.','deep family duo cozy'],
+  ['Принести с собой плед','Вечер вне дома тоже можно сделать уютным.','cozy romance duo'],
+  ['Маршрут выбирает подброшенная монета','Орёл — направо, решка — налево. Минимум три перекрёстка.','adv fun duo friends solo'],
+  ['Каждому — новое прозвище на вечер','Придумывают другие. Обращаться только так.','fun friends family'],
+  ['Говорить шёпотом первые полчаса','Удивительно, как меняется атмосфера.','romance cozy duo'],
+  ['Сделать общий рисунок','Каждый дорисовывает по одной детали по кругу.','fun family friends duo cozy'],
+  ['Рассказать о книге или фильме, который изменил вас','Коротко, но честно.','deep duo friends solo'],
+  ['Без сладкого до последнего пункта плана','Десерт надо заслужить.','fun family duo'],
+  ['Никто не смотрит в телефон, пока говорит другой','Простое, но работает.','duo friends family deep'],
+  ['Загадать желание на конец вечера','Кто угадает чужое желание — получает бонус.','romance fun duo friends'],
+  ['Включить в разговор три новых слова','Заранее выберите редкие слова и попробуйте их ввернуть.','fun friends duo'],
+  ['Свидание в стиле 90-х','Договориться о месте и времени и выключить телефоны.','romance adv duo'],
+  ['Самая неудачная история недели','Рассказывает каждый. Победитель получает лучший кусок.','fun friends family duo'],
+  ['Лечь спать до полуночи','Хороший вечер — это ещё и хорошее утро.','cozy solo duo low'],
+  ['Каждый учит других одному навыку за 5 минут','Узел, фокус, слово на другом языке.','fun adv friends family duo'],
+  ['Похвалить себя вслух','Хотя бы за одну вещь, сделанную на этой неделе.','solo deep cozy'],
+  ['Без разговоров о новостях','Вечер для своего, а не для мирового.','cozy duo friends family'],
+  ['Каждый пункт плана — на оценку от 1 до 10','В конце выбираете лучший момент вечера.','fun duo friends family'],
+  ['Сфотографироваться в одной позе через весь вечер','В начале, в середине и в конце. Потом сравнить.','fun friends duo family'],
+  ['Новое место — новый тост','Каждый раз, когда меняете локацию, кто-то говорит тост.','fun friends adv'],
+  ['Кто первым зевнёт, выбирает финальную песню','А все остальные под неё танцуют.','fun family friends duo'],
+  ['Вечер на иностранном языке','Хотя бы первые 15 минут. Можно с гуглом.','adv fun duo friends'],
+  ['Рассказать про человека, который на вас повлиял','И, может быть, написать ему завтра.','deep solo duo friends'],
  ],
 };
 
@@ -518,7 +619,7 @@ function pickIdea(list, avoid){
   let cand = pool.filter(x=>!avoid||x[0][0]!==avoid);
   if(!cand.length) cand = pool;
   const it = cand[Math.floor(Math.random()*cand.length)][0];
-  return {type:'idea', t:it[0], n:it[1]};
+  return {type:'idea', t:it[0], n:it[1], q:it[3]||''};
 }
 const hasData = ()=> !!(DATA && DATA.places && DATA.places.length);
 function slots(){
@@ -594,6 +695,8 @@ function placeHtml(k, p, isFar){
   if(p.a) meta.push(`<div><span>Адрес:</span> ${esc(p.a)}</div>`);
   if(p.m) meta.push(`<div><span>Метро:</span> ${esc(p.m)}${p.md!=null?' · '+kmText(p.md):''}</div>`);
   if(p.h) meta.push(`<div><span>Часы:</span> ${esc(hoursRu(p.h))}</div>`);
+  const chk = avgCheck(p);
+  if(chk) meta.push(`<div><span>Средний чек:</span> ${chk} на человека <span title="${p.pl?'По уровню цен из гида Ultima Guide':'Оценка по типу заведения и кухне'}">(${p.pl?'по гиду':'примерно'})</span></div>`);
   if(p.y) meta.push(`<div><span>Данные:</span> сверялись в ${p.y} году</div>`);
   const a = anchorFor(k);
   if(a && a!==p){ const d = dist(a.la,a.lo,p.la,p.lo);
@@ -617,6 +720,20 @@ function eventHtml(c){
     <div class="main">${esc(e.t)}</div><div class="meta">${meta.join('')}</div>
     <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее на mos.ru ↗</a>`:''}${afishaBtn()}</div>`;
 }
+function ideaLinks(k, it){
+  const L = (href, text, sec) => `<a${sec?' class="sec"':''} href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+  if(k==='music'){
+    const q = encodeURIComponent(it.q || it.t);
+    return `<div class="links">${L('https://music.yandex.ru/search?text='+q,'▶ Яндекс Музыка')}${L('https://vk.com/audio?q='+q,'VK Музыка',1)}${L('https://www.youtube.com/results?search_query='+q+'+playlist','YouTube',1)}</div>`;
+  }
+  if(k==='watch'){
+    const name = it.t.replace(/^Сериал\s*/,'').replace(/[«»]/g,'').replace(/\s*\(\d{4}\).*$/,'').replace(/,.*$/,'');
+    const q = encodeURIComponent(name);
+    return `<div class="links">${L('https://www.kinopoisk.ru/index.php?kp_query='+q,'▶ Найти на Кинопоиске')}</div>`;
+  }
+  if(k==='food') return `<div class="links">${L('https://eda.yandex.ru/moscow','Лень готовить? Яндекс Еда ↗',1)}</div>`;
+  return '';
+}
 function afishaBtn(){ const a = afishaLink(); return `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.text)}</a>`; }
 function render(anim){
   const out = document.getElementById('out');
@@ -626,11 +743,11 @@ function render(anim){
     if(it.type==='place') body = placeHtml(k, it.p, it.far);
     else if(it.type==='event') body = eventHtml(it);
     else if(it.type==='none') body = `<div class="note">${esc(it.msg)}</div>${k==='event'?`<div class="links">${afishaBtn()}</div>`:''}`;
-    else body = `<div class="main">${esc(it.t)}</div><div class="note">${esc(it.n)}</div>${k==='food'?
-      '<div class="links"><a class="sec" href="https://eda.yandex.ru/moscow" target="_blank" rel="noopener">Лень готовить? Яндекс Еда ↗</a></div>':''}`;
+    else body = `<div class="main">${esc(it.t)}</div><div class="note">${esc(it.n)}</div>${ideaLinks(k, it)}`;
     return `<div class="card${k==='rule'?' wide':''}${locks[k]?' locked':''}${anim?' fade':''}" data-k="${k}">
       <div class="ctop"><span class="ctitle">${title}</span>
         <span class="btns">
+          ${it.type!=='none'?`<button class="ib fav" data-act="fav" aria-pressed="${isFav(itemOf(k))}" title="В избранное" aria-label="В избранное">${isFav(itemOf(k))?'♥':'♡'}</button>`:''}
           ${it.type==='place'?'<button class="ib" data-act="hide" title="Больше не предлагать это место" aria-label="Больше не предлагать это место">🚫</button>':''}
           <button class="ib" data-act="lock" aria-pressed="${!!locks[k]}" title="Закрепить" aria-label="Закрепить">${locks[k]?'🔒':'🔓'}</button>
           <button class="ib" data-act="roll" title="Другой вариант" aria-label="Другой вариант">↻</button>
@@ -643,6 +760,7 @@ document.getElementById('out').addEventListener('click',e=>{
   const b = e.target.closest('button'); if(!b) return;
   const k = b.closest('.card').dataset.k;
   if(b.dataset.act==='lock'){ locks[k]=!locks[k]; render(false); return; }
+  if(b.dataset.act==='fav'){ toggleFav(itemOf(k)); render(false); return; }
   if(b.dataset.act==='hide'){ const it=current[k]; if(it && it.type==='place'){ hidden.add(pkey(it.p)); saveHidden(); toast('Больше не буду предлагать это место'); } locks[k]=false; }
   rollSlot(k);
   if(k==='go' && !locks.eat && current.eat) rollSlot('eat'); // еда подтягивается к новому месту
@@ -720,6 +838,144 @@ document.getElementById('copy').onclick = async ()=>{
   try{ await navigator.clipboard.writeText('План на вечер:\n'+lines.join('\n')); toast('Скопировано, можно отправить в чат'); }
   catch(e){ toast('Не получилось скопировать'); }
 };
+// =====================================================================
+//  Личные данные: избранное, сохранённые вечера, настройки.
+//  Всё хранится в браузере (localStorage). Для синхронизации между устройствами
+//  достаточно заменить Store.load / Store.save на работу с облаком.
+// =====================================================================
+const Store = {
+  key: 'evening-user-v1',
+  data: {favs:[], plans:[]},
+  load(){ try{ const d = JSON.parse(localStorage.getItem(this.key)||'null'); if(d) this.data = Object.assign({favs:[],plans:[]}, d); }catch(e){} },
+  save(){ try{ localStorage.setItem(this.key, JSON.stringify(this.data)); }catch(e){} updateFavCount(); },
+};
+Store.load();
+const SLOT_NAME = {go:'Куда пойти',event:'Событие',eat:'Где поесть',watch:'Посмотреть',food:'Поесть',do:'Занятие',music:'Музыка',rule:'Правило вечера'};
+// превращает карточку в запись для избранного
+function itemOf(k){
+  const it = current[k]; if(!it) return null;
+  if(it.type==='place'){ const p = it.p;
+    return {id:'p:'+pkey(p), kind:'place', slot:k, title:p.n, sub:[KIND[p.k], p.a, p.m?'м. '+p.m:''].filter(Boolean).join(' · '), url:yandex(p), p}; }
+  if(it.type==='event'){ const e = it.e;
+    return {id:'e:'+e.u, kind:'event', slot:k, title:e.t, sub:[fmtWhen(it.sl), e.p].filter(Boolean).join(' · '), url:e.u}; }
+  if(it.type==='idea') return {id:'i:'+k+':'+it.t, kind:'idea', slot:k, title:it.t, sub:it.n, q:it.q||''};
+  return null;
+}
+const isFav = x => !!x && Store.data.favs.some(f=>f.id===x.id);
+function toggleFav(x){
+  if(!x) return;
+  if(isFav(x)){ Store.data.favs = Store.data.favs.filter(f=>f.id!==x.id); toast('Убрано из избранного'); }
+  else { Store.data.favs.unshift(Object.assign({ts:Date.now()}, x)); toast('Добавлено в избранное ❤️'); }
+  Store.save();
+}
+function updateFavCount(){ const n = Store.data.favs.length + Store.data.plans.length; document.getElementById('favCount').textContent = n ? `(${n})` : ''; }
+function planText(){
+  return slots().map(([k,t])=>{
+    const it = current[k]; if(!it || it.type==='none') return '';
+    const head = t.replace(/^\S+\s/,'');
+    if(it.type==='place') return `${head}: ${it.p.n}${it.p.a?' ('+it.p.a+')':''}${it.p.m?', м. '+it.p.m:''}`;
+    if(it.type==='event') return `${head}: ${it.e.t}. ${fmtWhen(it.sl)}`;
+    return `${head}: ${it.t}`;
+  }).filter(Boolean).join('\n');
+}
+document.getElementById('savePlan').onclick = ()=>{
+  if(!Object.keys(current).length) return;
+  const d = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+  const mood = DIMS[1].opts.find(o=>o[0]===state.mood)[1], where = state.place==='home' ? 'дома' : 'в городе';
+  Store.data.plans.unshift({id:'v:'+Date.now(), ts:Date.now(), title:`${d}: ${mood.toLowerCase()} ${where}`, text:planText(),
+    items:slots().map(([k])=>itemOf(k)).filter(Boolean)});
+  Store.save(); toast('Вечер сохранён в избранном');
+};
+
+// ---------- окно
+const modal = document.getElementById('modal');
+function openModal(title, html){ document.getElementById('mTitle').textContent = title; document.getElementById('mBody').innerHTML = html; modal.hidden = false; }
+function closeModal(){ modal.hidden = true; }
+document.getElementById('mClose').onclick = closeModal;
+modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !modal.hidden) closeModal(); });
+
+let favTab = 'places';
+function favLink(f){
+  if(f.url) return `<a href="${esc(f.url)}" target="_blank" rel="noopener">${f.kind==='event'?'Подробнее ↗':'На карте ↗'}</a>`;
+  if(f.slot==='music' && f.q) return `<a href="https://music.yandex.ru/search?text=${encodeURIComponent(f.q)}" target="_blank" rel="noopener">Слушать ↗</a>`;
+  return '';
+}
+function drawFav(){
+  const F = Store.data.favs;
+  const lists = {places:F.filter(f=>f.kind!=='idea'), ideas:F.filter(f=>f.kind==='idea'), plans:Store.data.plans};
+  const tab = (id, label) => `<button class="chip" data-tab="${id}" aria-pressed="${favTab===id}">${label} (${lists[id].length})</button>`;
+  let h = `<div class="tabs">${tab('places','Места и события')}${tab('ideas','Идеи')}${tab('plans','Вечера')}</div>`;
+  const L = lists[favTab];
+  if(!L.length) h += `<p class="muted">Пока пусто. Нажмите ♡ на карточке${favTab==='plans'?' или «💾 Сохранить вечер» под планом':''}, и оно появится здесь.</p>`;
+  h += L.map(f=> favTab==='plans'
+    ? `<div class="fitem"><div><div class="ft">${esc(f.title)}</div><div class="fs">${esc(f.text)}</div></div><button class="ib" data-del="${esc(f.id)}" aria-label="Удалить">✕</button></div>`
+    : `<div class="fitem"><div><div class="ft">${esc(f.title)}</div><div class="fs">${esc(SLOT_NAME[f.slot]||'')}${f.sub?' · '+esc(f.sub):''}</div>${favLink(f)}</div><button class="ib" data-del="${esc(f.id)}" aria-label="Удалить">✕</button></div>`).join('');
+  openModal('Избранное', h);
+}
+document.getElementById('openFav').onclick = drawFav;
+document.getElementById('mBody').addEventListener('click', e=>{
+  const t = e.target.closest('[data-tab]'); if(t){ favTab = t.dataset.tab; drawFav(); return; }
+  const d = e.target.closest('[data-del]');
+  if(d){ const id = d.dataset.del; Store.data.favs = Store.data.favs.filter(f=>f.id!==id); Store.data.plans = Store.data.plans.filter(f=>f.id!==id); Store.save(); drawFav(); if(Object.keys(current).length) render(false); return; }
+  const a = e.target.closest('[data-set]'); if(a) settingsAction(a.dataset.set);
+});
+
+// ---------- настройки
+function drawSettings(){
+  const hasMetro = DATA && DATA.metro && DATA.metro.length;
+  openModal('Настройки', `
+    <p class="muted">Выбранные параметры вечера (компания, настроение, бюджет, кухня и так далее) запоминаются сами и сохраняются в этом браузере.</p>
+    <h3>Ищу места рядом с</h3>
+    <div class="field">${hasMetro?`<input id="setMetro" list="metrolist" placeholder="станция метро" value="${esc(state.origin&&state.origin.metro?state.origin.name.replace(/^м\. /,''):'')}">`:''}
+      <button class="chip" data-set="metro">Сохранить</button><button class="chip" data-set="nometro">Вся Москва</button></div>
+    <h3>Скрытые места</h3>
+    <div class="field"><span class="muted">Убрано из подбора: ${hidden.size}</span>${hidden.size?'<button class="chip" data-set="unhide">Вернуть все</button>':''}</div>
+    <h3>Перенос на другое устройство</h3>
+    <p class="muted">Скопируйте код и вставьте его на другом телефоне или компьютере. Перенесутся избранное, сохранённые вечера, скрытые места и параметры.</p>
+    <div class="field"><button class="chip" data-set="export">📋 Скопировать код</button></div>
+    <div class="field"><textarea id="importCode" placeholder="Вставьте код с другого устройства"></textarea></div>
+    <div class="field"><button class="chip" data-set="import">Загрузить из кода</button></div>
+    <h3>Сброс</h3>
+    <div class="field"><button class="chip" data-set="reset">Сбросить параметры вечера</button><button class="chip" data-set="wipe">Удалить все мои данные</button></div>`);
+}
+document.getElementById('openSet').onclick = drawSettings;
+const b64e = s => btoa(unescape(encodeURIComponent(s))), b64d = s => decodeURIComponent(escape(atob(s)));
+let wipeArmed = false;
+async function settingsAction(a){
+  if(a==='metro'){
+    const el = document.getElementById('setMetro'); if(!el) return;
+    const v = el.value.trim().toLowerCase().replace(/ё/g,'е'), norm = x=>x.toLowerCase().replace(/ё/g,'е');
+    const m = DATA.metro.find(x=>norm(x[0])===v) || DATA.metro.find(x=>norm(x[0]).startsWith(v));
+    if(m){ setOrigin({name:'м. '+m[0], metro:1, la:m[1], lo:m[2]}); toast('Буду искать рядом с м. '+m[0]); drawSettings(); } else toast('Не нашёл такую станцию');
+  } else if(a==='nometro'){ setOrigin(null); toast('Ищу по всей Москве'); drawSettings(); }
+  else if(a==='unhide'){ hidden.clear(); saveHidden(); toast('Скрытые места снова в подборе'); drawSettings(); }
+  else if(a==='export'){
+    const code = b64e(JSON.stringify({v:1, user:Store.data, hidden:[...hidden], state}));
+    try{ await navigator.clipboard.writeText(code); toast('Код скопирован'); }
+    catch(e){ document.getElementById('importCode').value = code; toast('Скопируйте код из поля ниже'); }
+  } else if(a==='import'){
+    try{
+      const d = JSON.parse(b64d(document.getElementById('importCode').value.trim()));
+      if(!d || d.v!==1) throw 0;
+      const ids = new Set(Store.data.favs.map(f=>f.id)), pids = new Set(Store.data.plans.map(f=>f.id));
+      Store.data.favs = Store.data.favs.concat((d.user.favs||[]).filter(f=>!ids.has(f.id)));
+      Store.data.plans = Store.data.plans.concat((d.user.plans||[]).filter(f=>!pids.has(f.id)));
+      Store.save(); (d.hidden||[]).forEach(x=>hidden.add(x)); saveHidden();
+      Object.assign(state, d.state||{}); save(); drawControls();
+      toast('Данные загружены'); drawSettings();
+    }catch(e){ toast('Код не подошёл. Скопируйте его целиком'); }
+  } else if(a==='reset'){
+    Object.assign(state, {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false});
+    save(); drawControls(); toast('Параметры сброшены'); drawSettings();
+  } else if(a==='wipe'){
+    if(!wipeArmed){ wipeArmed = true; toast('Нажмите ещё раз, чтобы удалить избранное, вечера и скрытые места'); setTimeout(()=>wipeArmed=false, 4000); return; }
+    wipeArmed = false; Store.data = {favs:[], plans:[]}; Store.save(); hidden.clear(); saveHidden();
+    toast('Все данные удалены'); drawSettings(); if(Object.keys(current).length) render(false);
+  }
+}
+updateFavCount();
+
 let toastTimer;
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
 

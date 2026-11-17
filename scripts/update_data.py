@@ -572,7 +572,7 @@ def load_curated():
         if len(parts) < 3 or not parts[0]:
             continue
         name, addr, tags = parts[0], parts[1], parts[2].split()
-        labels, tier, pc, kind = [], 2, None, None
+        labels, tier, pc, kind, pl = [], 2, None, None, None
         rank = next((int(t[1:]) for t in tags if re.match(r"^W\d+$", t)), None)
         if "U50" in tags:
             labels.append("Ultima Guide 2026: топ-50 ресторанов"); tier = 1
@@ -589,11 +589,12 @@ def load_curated():
         for t in tags:
             if re.match(r"^p[1-4]$", t):
                 pc = min(3, int(t[1]))
+                pl = int(t[1])
             if t in ("bar", "cafe", "rest"):
                 kind = {"bar": "bar", "cafe": "cafe", "rest": "restaurant"}[t]
         if not kind:
             kind = "bar" if GUESS_BAR.search(name) else "restaurant"
-        out.append({"n": name, "addr": addr, "labels": labels, "tier": tier, "pc": pc, "k": kind})
+        out.append({"n": name, "addr": addr, "labels": labels, "tier": tier, "pc": pc, "pl": pl, "k": kind})
     return out
 
 
@@ -682,6 +683,7 @@ def apply_curated(places, today):
         target["y"] = today.year
         if c["pc"] is not None:
             target["pc"] = c["pc"]
+            target["pl"] = c["pl"]
         elif "pc" not in target:
             target["pc"] = 1 if c["k"] == "cafe" else 2
         target.pop("_ch", None)
