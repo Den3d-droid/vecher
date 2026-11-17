@@ -93,6 +93,7 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
   <nav class="topnav">
     <button class="ghost small" id="openFav">❤️ Избранное <span id="favCount"></span></button>
     <button class="ghost small" id="openSet">⚙️ Настройки</button>
+    <button class="ghost small" id="openAcc" hidden>👤 Войти</button>
   </nav>
   <header>
     <div class="kicker">Москва · сегодня вечером</div>
@@ -123,6 +124,7 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
 <datalist id="metrolist"></datalist>
 <div class="toast" id="toast"></div>
 
+<script src="firebase-config.js"></script>
 <script>
 'use strict';
 // =====================================================================
@@ -187,8 +189,9 @@ if(!CUISINES.some(c=>c[0]===state.cuisine)) state.cuisine = 'any';
 let hidden = new Set();
 try{ hidden = new Set(JSON.parse(localStorage.getItem('evening-hidden')||'[]')); }catch(e){}
 const pkey = p => p.n+'|'+p.la+'|'+p.lo;
-function saveHidden(){ try{ localStorage.setItem('evening-hidden', JSON.stringify([...hidden])); }catch(e){} }
-function save(){ try{ localStorage.setItem('evening-state-v2', JSON.stringify(state)); }catch(e){} }
+function saveHidden(){ try{ localStorage.setItem('evening-hidden', JSON.stringify([...hidden])); }catch(e){} userDataChanged(); }
+function save(){ try{ localStorage.setItem('evening-state-v2', JSON.stringify(state)); }catch(e){} userDataChanged(); }
+function userDataChanged(){ if(window.onUserDataChange) try{ window.onUserDataChange(); }catch(e){} }
 
 // =====================================================================
 //  Идеи для вечера дома (и запасные идеи, если база мест не загрузилась)
@@ -847,7 +850,7 @@ const Store = {
   key: 'evening-user-v1',
   data: {favs:[], plans:[]},
   load(){ try{ const d = JSON.parse(localStorage.getItem(this.key)||'null'); if(d) this.data = Object.assign({favs:[],plans:[]}, d); }catch(e){} },
-  save(){ try{ localStorage.setItem(this.key, JSON.stringify(this.data)); }catch(e){} updateFavCount(); },
+  save(){ try{ localStorage.setItem(this.key, JSON.stringify(this.data)); }catch(e){} updateFavCount(); userDataChanged(); },
 };
 Store.load();
 const SLOT_NAME = {go:'Куда пойти',event:'Событие',eat:'Где поесть',watch:'Посмотреть',food:'Поесть',do:'Занятие',music:'Музыка',rule:'Правило вечера'};
@@ -925,7 +928,9 @@ document.getElementById('mBody').addEventListener('click', e=>{
 function drawSettings(){
   const hasMetro = DATA && DATA.metro && DATA.metro.length;
   openModal('Настройки', `
-    <p class="muted">Выбранные параметры вечера (компания, настроение, бюджет, кухня и так далее) запоминаются сами и сохраняются в этом браузере.</p>
+    <h3>Аккаунт</h3>
+    ${accountHtml()}
+    <p class="muted" style="margin-top:10px">Выбранные параметры вечера (компания, настроение, бюджет, кухня и так далее) запоминаются сами.</p>
     <h3>Ищу места рядом с</h3>
     <div class="field">${hasMetro?`<input id="setMetro" list="metrolist" placeholder="станция метро" value="${esc(state.origin&&state.origin.metro?state.origin.name.replace(/^м\. /,''):'')}">`:''}
       <button class="chip" data-set="metro">Сохранить</button><button class="chip" data-set="nometro">Вся Москва</button></div>
@@ -940,9 +945,17 @@ function drawSettings(){
     <div class="field"><button class="chip" data-set="reset">Сбросить параметры вечера</button><button class="chip" data-set="wipe">Удалить все мои данные</button></div>`);
 }
 document.getElementById('openSet').onclick = drawSettings;
+document.getElementById('openAcc').onclick = drawSettings;
+function updateAccButton(){ const b = document.getElementById('openAcc'); b.hidden = !Account.enabled; b.textContent = Account.user ? '👤 '+(Account.user.email||'Аккаунт').split('@')[0] : '👤 Войти'; }
+
 const b64e = s => btoa(unescape(encodeURIComponent(s))), b64d = s => decodeURIComponent(escape(atob(s)));
 let wipeArmed = false;
 async function settingsAction(a){
+  if(['login','signup','google','resetpass','logout'].includes(a)){
+    if(window.accountAction) window.accountAction(a, (document.getElementById('accEmail')||{}).value||'', (document.getElementById('accPass')||{}).value||'');
+    else toast('Вход ещё загружается, попробуйте через пару секунд');
+    return;
+  }
   if(a==='metro'){
     const el = document.getElementById('setMetro'); if(!el) return;
     const v = el.value.trim().toLowerCase().replace(/ё/g,'е'), norm = x=>x.toLowerCase().replace(/ё/g,'е');
@@ -976,6 +989,42 @@ async function settingsAction(a){
 }
 updateFavCount();
 
+// ---------- обмен данными с облаком (используется модулем аккаунтов ниже)
+window.Vecher = {
+  getUserData(){ return {favs:Store.data.favs.slice(0,500), plans:Store.data.plans.slice(0,100), hidden:[...hidden], state:JSON.parse(JSON.stringify(state))}; },
+  // объединение при входе: ничего не теряем ни с устройства, ни из облака
+  merge(local, cloud){
+    if(!cloud) return local;
+    const uni = (a,b)=>{ const ids = new Set(a.map(x=>x.id)); return a.concat(b.filter(x=>!ids.has(x.id))); };
+    return {favs:uni(cloud.favs||[], local.favs||[]).sort((x,y)=>(y.ts||0)-(x.ts||0)),
+            plans:uni(cloud.plans||[], local.plans||[]).sort((x,y)=>(y.ts||0)-(x.ts||0)),
+            hidden:[...new Set([...(cloud.hidden||[]), ...(local.hidden||[])])],
+            state:Object.assign({}, local.state, cloud.state||{})};
+  },
+  // применить данные из облака, не отправляя их обратно
+  apply(d){
+    const keep = window.onUserDataChange; window.onUserDataChange = null;
+    try{
+      Store.data = {favs:d.favs||[], plans:d.plans||[]}; Store.save();
+      hidden = new Set(d.hidden||[]); saveHidden();
+      if(d.state){ Object.assign(state, d.state); if(!Array.isArray(state.want)) state.want = []; save(); }
+      drawControls(); if(Object.keys(current).length) render(false);
+    } finally { window.onUserDataChange = keep; }
+  },
+  toast, drawSettings,
+};
+const Account = { enabled: !!window.FIREBASE_CONFIG, user: null, busy: false };
+window.Vecher.setUser = u => { Account.user = u; updateAccButton(); if(!modal.hidden && document.getElementById('mTitle').textContent==='Настройки') drawSettings(); };
+updateAccButton();
+function accountHtml(){
+  if(!Account.enabled) return `<p class="muted">Вход и синхронизация пока не подключены. Чтобы перенести данные, используйте код ниже.</p>`;
+  if(Account.user) return `<p class="muted">Вы вошли как <b>${esc(Account.user.email||Account.user.displayName||'пользователь')}</b>. Избранное, вечера, скрытые места и параметры синхронизируются на всех устройствах, где вы вошли.</p>
+    <div class="field"><button class="chip" data-set="logout">Выйти</button></div>`;
+  return `<p class="muted">Войдите, чтобы избранное и настройки были на всех ваших устройствах. Всё, что уже сохранено в этом браузере, перенесётся в аккаунт.</p>
+    <div class="field"><input id="accEmail" type="email" placeholder="почта" autocomplete="email"><input id="accPass" type="password" placeholder="пароль, от 6 символов" autocomplete="current-password"></div>
+    <div class="field"><button class="chip" data-set="login">Войти</button><button class="chip" data-set="signup">Зарегистрироваться</button><button class="chip" data-set="google">Войти через Google</button><button class="chip" data-set="resetpass">Забыли пароль?</button></div>`;
+}
+
 let toastTimer;
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
 
@@ -1006,6 +1055,75 @@ fetch('data/places.json', {cache:'no-cache'})
   .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
   .then(d=>{ if(d && Array.isArray(d.places)){ DATA = d; init(); } })
   .catch(()=>{});
+</script>
+<script type="module">
+// Аккаунты и синхронизация через Firebase. Включаются, только если заполнен firebase-config.js.
+const cfg = window.FIREBASE_CONFIG;
+if(cfg){
+  const V = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  try{
+    const {initializeApp} = await import(V+'firebase-app.js');
+    const A = await import(V+'firebase-auth.js');
+    const F = await import(V+'firebase-firestore.js');
+    const app = initializeApp(cfg), auth = A.getAuth(app), db = F.getFirestore(app);
+    auth.languageCode = 'ru';
+    let unsub = null, timer = null, lastSent = '';
+    const ERR = {
+      'auth/invalid-email':'Почта указана неверно', 'auth/missing-password':'Введите пароль',
+      'auth/weak-password':'Пароль слишком короткий, нужно от 6 символов', 'auth/email-already-in-use':'Такая почта уже зарегистрирована, нажмите «Войти»',
+      'auth/invalid-credential':'Неверная почта или пароль', 'auth/user-not-found':'Такой почты нет, нажмите «Зарегистрироваться»',
+      'auth/wrong-password':'Неверный пароль', 'auth/too-many-requests':'Слишком много попыток, подождите немного',
+      'auth/popup-closed-by-user':'Окно входа закрыто', 'auth/network-request-failed':'Нет связи с сервером входа',
+      'auth/unauthorized-domain':'Этот адрес сайта не разрешён в настройках Firebase',
+    };
+    const say = e => window.Vecher.toast(ERR[e && e.code] || ('Ошибка: '+((e && e.code) || e)));
+    const push = () => {
+      const u = auth.currentUser; if(!u) return;
+      clearTimeout(timer);
+      timer = setTimeout(async ()=>{
+        const d = window.Vecher.getUserData(), js = JSON.stringify(d);
+        if(js===lastSent) return; lastSent = js;
+        try{ await F.setDoc(F.doc(db,'users',u.uid), Object.assign(d, {updated:F.serverTimestamp()})); }
+        catch(e){ console.warn('sync', e); }
+      }, 800);
+    };
+    window.accountAction = async (a, email, pass) => {
+      try{
+        if(a==='login') await A.signInWithEmailAndPassword(auth, email.trim(), pass);
+        else if(a==='signup') await A.createUserWithEmailAndPassword(auth, email.trim(), pass);
+        else if(a==='google') await A.signInWithPopup(auth, new A.GoogleAuthProvider());
+        else if(a==='resetpass'){ await A.sendPasswordResetEmail(auth, email.trim()); window.Vecher.toast('Письмо для смены пароля отправлено'); }
+        else if(a==='logout'){ await A.signOut(auth); window.Vecher.toast('Вы вышли. Данные остались в этом браузере'); }
+      }catch(e){ say(e); }
+    };
+    A.onAuthStateChanged(auth, async u => {
+      if(unsub){ unsub(); unsub = null; }
+      window.onUserDataChange = null;
+      window.Vecher.setUser(u);
+      if(!u) return;
+      const ref = F.doc(db,'users',u.uid);
+      try{
+        const snap = await F.getDoc(ref);
+        const merged = window.Vecher.merge(window.Vecher.getUserData(), snap.exists() ? snap.data() : null);
+        window.Vecher.apply(merged);
+        lastSent = JSON.stringify(window.Vecher.getUserData());
+        await F.setDoc(ref, Object.assign(window.Vecher.getUserData(), {updated:F.serverTimestamp()}));
+        window.Vecher.toast('Вход выполнен, данные синхронизированы');
+      }catch(e){ console.warn(e); window.Vecher.toast('Не удалось загрузить данные из аккаунта'); }
+      window.onUserDataChange = push;
+      // изменения с других устройств
+      unsub = F.onSnapshot(ref, s => {
+        if(!s.exists() || s.metadata.hasPendingWrites) return;
+        const d = s.data(), mine = JSON.stringify(window.Vecher.getUserData());
+        const theirs = JSON.stringify({favs:d.favs||[], plans:d.plans||[], hidden:d.hidden||[], state:d.state||{}});
+        if(theirs!==mine){ lastSent = theirs; window.Vecher.apply(d); }
+      });
+    });
+  }catch(e){
+    console.warn('Firebase не загрузился', e);
+    window.Vecher.toast('Сервис входа сейчас недоступен. Избранное сохраняется в этом браузере');
+  }
+}
 </script>
 </body>
 </html>
