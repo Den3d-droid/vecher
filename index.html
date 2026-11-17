@@ -48,6 +48,7 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
 .ib[aria-pressed="true"]{background:var(--accent);color:#1a120a;border-color:var(--accent)}
 .main{font-family:"Playfair Display",serif;font-size:22px;line-height:1.25;margin-bottom:6px;overflow-wrap:anywhere}
 .note{color:var(--muted);font-size:14px}
+.guide{font-size:12px;font-weight:700;color:#1a120a;background:linear-gradient(135deg,#f6c76b,var(--accent));border-radius:10px;padding:5px 10px;margin-bottom:10px;line-height:1.35}
 .tag{display:inline-block;font-size:12px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:0 6px 8px 0}
 .meta{font-size:14px;color:var(--text);margin-top:8px;display:grid;gap:3px}
 .meta span{color:var(--muted)}
@@ -136,7 +137,7 @@ const CUISINES = [
   ['beer','Пиво и вино',['пиво','вино','коктейл']],
 ];
 const PC_LABEL = ['обычно бесплатно','обычно недорого','средние цены','обычно дорого'];
-const state = {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any'};
+const state = {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('evening-state-v2')||'{}')); }catch(e){}
 if(!Array.isArray(state.want)) state.want = [];
 if(!CUISINES.some(c=>c[0]===state.cuisine)) state.cuisine = 'any';
@@ -399,6 +400,7 @@ function pickPlace(weights, anchor, maxKm, slot, opt){
     const w = weights[p.k]; if(!w) continue;
     if(hidden.has(pkey(p))) continue;
     if(opt.maxPc!=null && (p.pc==null ? 2 : p.pc) > opt.maxPc) continue;
+    if(opt.onlyTop && !p.g) continue;
     if(opt.cuisine && opt.cuisine.length && !(p.c && opt.cuisine.some(c=>p.c.includes(c)))) continue;
     if(anchor && maxKm<1e8 && dist(anchor.la,anchor.lo,p.la,p.lo)>maxKm) continue;
     (groups[p.k]=groups[p.k]||[]).push(p);
@@ -412,8 +414,15 @@ function pickPlace(weights, anchor, maxKm, slot, opt){
   let total = ks.reduce((s,k)=>s+weights[k],0), r = Math.random()*total, kind = ks[0];
   for(const k of ks){ r-=weights[k]; if(r<=0){ kind=k; break; } }
   const list = fresh[kind].slice().sort((a,b)=>b.s-a.s);
-  const top = list.slice(0, Math.max(8, Math.min(60, Math.ceil(list.length*.35))));
-  const p = top[Math.floor(Math.random()*top.length)];
+  const picked = list.filter(x=>x.g), rest = list.filter(x=>!x.g);
+  let p;
+  if(picked.length && (!rest.length || Math.random() < .6)){
+    const t1 = picked.filter(x=>x.gt===1), pool = t1.length && Math.random()<.4 ? t1 : picked;
+    p = pool[Math.floor(Math.random()*pool.length)];
+  } else {
+    const top = rest.slice(0, Math.max(8, Math.min(60, Math.ceil(rest.length*.35))));
+    p = top[Math.floor(Math.random()*top.length)];
+  }
   sset.add(p); return p;
 }
 
@@ -470,6 +479,25 @@ function pickEvent(anchor, maxKm){
   sset.add(ch.e); return ch;
 }
 
+// ссылка на Яндекс Афишу: категория по пожеланиям и настроению, дата по выбранному дню
+function afishaCat(){
+  const ws = wantSets();
+  if(state.who==='family' || ws.events.has('kids')) return ['kids','детские события'];
+  if(ws.events.has('show')) return ['standup','стендап'];
+  if(ws.events.has('theater')) return ['theatre','спектакли'];
+  if(ws.events.has('concert')) return ['concert','концерты'];
+  if(ws.events.has('exhibition')) return ['art','выставки'];
+  return ({fun:['standup','стендап'], romance:['concert','концерты'], deep:['theatre','спектакли'], cozy:['art','выставки'], adv:['concert','концерты']})[state.mood];
+}
+function afishaLink(){
+  const win = dayWindow(), from = Math.max(win[0], win[2]);
+  const d = new Date((from+MSK)*1000), date = d.toISOString().slice(0,10);
+  const period = state.day==='weekend' ? Math.max(1, Math.round((win[1]-from)/86400)) : 1;
+  const [cat, label] = afishaCat();
+  const when = state.day==='today' ? 'на сегодня' : state.day==='tomorrow' ? 'на завтра' : 'на выходные';
+  return {url:`https://afisha.yandex.ru/moscow/${cat}?date=${date}&period=${period}`, text:`${label[0].toUpperCase()+label.slice(1)} ${when} на Яндекс Афише ↗`};
+}
+
 // =====================================================================
 //  Сборка вечера
 // =====================================================================
@@ -518,7 +546,7 @@ function rollSlot(k){
   } else if(k==='eat'){
     if(!hasData()){ current.eat = pickIdea(DB.eatout, prev&&prev.t); return; }
     const a = anchorFor('eat'), w = foodWeights();
-    const opt = {maxPc: state.budget==='high' ? 3 : 1, cuisine: cuisineKeys()};
+    const opt = {maxPc: state.budget==='high' ? 3 : (state.budget==='low' && state.onlyTop ? 2 : 1), cuisine: cuisineKeys(), onlyTop: state.onlyTop};
     const steps = a ? (current.go && current.go.type==='place' ? [1.2,2.5,5,1e9] : [radiusKm(),1e9]) : [1e9];
     let p = null;
     for(const km of steps){ p = pickPlace(w, a, km, 'eat', opt); if(p) break; }
@@ -573,7 +601,8 @@ function placeHtml(k, p, isFar){
   const links = [`<a href="${esc(yandex(p))}" target="_blank" rel="noopener">Отзывы на Яндекс Картах ↗</a>`];
   if(safeUrl(p.w)) links.push(`<a class="sec" href="${esc(p.w)}" target="_blank" rel="noopener">Сайт</a>`);
   const far = (k==='go' && isFar) ? '<div class="note" style="margin-top:6px">Рядом ничего подходящего не нашлось, поэтому вариант подальше.</div>' : '';
-  return `<div><span class="tag">${esc(KIND[p.k]||'Место')}</span>${p.c?`<span class="tag">${esc(p.c)}</span>`:''}${p.f?'<span class="tag">вход свободный</span>':(p.pc!=null?`<span class="tag">${PC_LABEL[p.pc]}</span>`:'')}</div>
+  const guide = p.g ? `<div class="guide">⭐ ${p.g.map(esc).join(' · ')}</div>` : '';
+  return `${guide}<div><span class="tag">${esc(KIND[p.k]||'Место')}</span>${p.c?`<span class="tag">${esc(p.c)}</span>`:''}${p.f?'<span class="tag">вход свободный</span>':(p.pc!=null?`<span class="tag">${PC_LABEL[p.pc]}</span>`:'')}</div>
     <div class="main">${esc(p.n)}</div><div class="note">${esc(TIP[p.k] || '')}</div>${far}
     <div class="meta">${meta.join('')}</div><div class="links">${links.join('')}</div>`;
 }
@@ -586,8 +615,9 @@ function eventHtml(c){
   if(state.origin && e.la!=null) meta.push(`<div><span>От вас:</span> ${kmText(dist(state.origin.la,state.origin.lo,e.la,e.lo))}</div>`);
   return `<div><span class="tag">${esc(kind)}</span>${e.ag?`<span class="tag">${e.ag}+</span>`:''}</div>
     <div class="main">${esc(e.t)}</div><div class="meta">${meta.join('')}</div>
-    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее на mos.ru ↗</a>`:''}</div>`;
+    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее на mos.ru ↗</a>`:''}${afishaBtn()}</div>`;
 }
+function afishaBtn(){ const a = afishaLink(); return `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.text)}</a>`; }
 function render(anim){
   const out = document.getElementById('out');
   out.innerHTML = '<div class="grid">'+slots().map(([k,title])=>{
@@ -595,8 +625,9 @@ function render(anim){
     let body;
     if(it.type==='place') body = placeHtml(k, it.p, it.far);
     else if(it.type==='event') body = eventHtml(it);
-    else if(it.type==='none') body = `<div class="note">${esc(it.msg)}</div>`;
-    else body = `<div class="main">${esc(it.t)}</div><div class="note">${esc(it.n)}</div>`;
+    else if(it.type==='none') body = `<div class="note">${esc(it.msg)}</div>${k==='event'?`<div class="links">${afishaBtn()}</div>`:''}`;
+    else body = `<div class="main">${esc(it.t)}</div><div class="note">${esc(it.n)}</div>${k==='food'?
+      '<div class="links"><a class="sec" href="https://eda.yandex.ru/moscow" target="_blank" rel="noopener">Лень готовить? Яндекс Еда ↗</a></div>':''}`;
     return `<div class="card${k==='rule'?' wide':''}${locks[k]?' locked':''}${anim?' fade':''}" data-k="${k}">
       <div class="ctop"><span class="ctitle">${title}</span>
         <span class="btns">
@@ -632,6 +663,8 @@ function drawControls(){
       WANT.map(w=>`<button class="chip" data-want="${w[0]}" aria-pressed="${state.want.includes(w[0])}">${w[1]}</button>`).join('')}</div></div>`;
   h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Кухня</span><div class="chips">${
       CUISINES.map(c=>`<button class="chip" data-d="cuisine" data-v="${c[0]}" aria-pressed="${state.cuisine===c[0]}">${c[1]}</button>`).join('')}</div></div>`;
+  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Еда и бары</span><div class="chips">
+      <button class="chip" id="onlytop" aria-pressed="${!!state.onlyTop}">⭐ Только из гидов и премий</button></div></div>`;
   const hasMetro = DATA && DATA.metro && DATA.metro.length;
   h += `<div class="row outonly"${out&&hasData()?'':' hidden'}><span class="label">Рядом с</span><div class="chips">
       ${hasMetro?`<input class="metro" id="metro" list="metrolist" placeholder="станция метро" autocomplete="off" value="${esc(state.origin&&state.origin.metro?state.origin.name:'')}">`:''}
@@ -655,6 +688,7 @@ ctl.addEventListener('click',e=>{
     return;
   }
   if(c.id==='noorigin'){ setOrigin(null); return; }
+  if(c.id==='onlytop'){ state.onlyTop = !state.onlyTop; save(); drawControls(); return; }
   if(c.dataset.want!=null){
     const v = c.dataset.want;
     if(!v) state.want = []; else state.want = state.want.includes(v) ? state.want.filter(x=>x!==v) : state.want.concat(v);
@@ -697,7 +731,7 @@ function credits(){
     const when = isNaN(d) ? '' : d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
     h += `Мест в базе: ${DATA.places.length.toLocaleString("ru-RU")} · событий: ${(DATA.events||[]).length.toLocaleString("ru-RU")}${when?' · обновлено '+when:''}<br>`;
   }
-  h += 'Места: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL) · события: <a href="https://www.mos.ru/afisha/" target="_blank" rel="noopener">афиша mos.ru</a><br>В открытых данных нет оценок, а часть мест могла закрыться. Перед выходом проверьте место по ссылке на карты. Кнопка 🚫 убирает место из подбора.';
+  h += 'Места: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL) · события: <a href="https://www.mos.ru/afisha/" target="_blank" rel="noopener">афиша mos.ru</a><br>Значком ⭐ отмечены места из гидов Ultima Guide, премии WhereToEat и подборок «Афиши Daily». У остальных оценок нет, а часть могла закрыться. Перед выходом проверьте место по ссылке на карты. Кнопка 🚫 убирает место из подбора.';
   document.getElementById('credits').innerHTML = h;
 }
 function banner(){

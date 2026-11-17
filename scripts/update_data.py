@@ -24,6 +24,10 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "places.json")
+CURATED = os.path.join(ROOT, "data", "curated.txt")
+GEOCACHE = os.path.join(ROOT, "data", "geocache.json")
+NOMINATIM = "https://nominatim.openstreetmap.org/search"
+MAX_GEOCODE = 450        # сколько новых адресов искать за один запуск (1 запрос в секунду)
 UA = "evening-generator/1.0 (personal non-commercial project; https://github.com/Den3d-droid/vecher)"
 
 OVERPASS_URLS = [
@@ -277,11 +281,11 @@ def osm_place(el, today):
         return None
     if t.get("access") in ("private", "no") or t.get("opening_hours") in ("closed", "off"):
         return None
-    # крупные сети в подборку «куда сходить вечером» не берём
+    # крупные сети помечаем: если место не попало в подборки, его уберём
+    chain = False
     if kind in ("restaurant", "cafe", "bar"):
         flat = re.sub(r"\s+", " ", name.lower().replace("ё", "е").replace("\u00a0", " ")).replace("№ ", "№")
-        if any(c.replace("ё", "е") in flat for c in CHAINS):
-            return None
+        chain = any(c.replace("ё", "е") in flat for c in CHAINS)
     # явные признаки закрытия
     if any(k.split(":")[0] in ("disused", "abandoned", "demolished", "removed", "was", "razed", "construction") for k in t):
         return None
@@ -322,6 +326,8 @@ def osm_place(el, today):
         pass
 
     p = {"n": name[:90], "k": kind, "la": round(la, 5), "lo": round(lo, 5), "s": score}
+    if chain:
+        p["_ch"] = 1
     if seen:
         p["y"] = int(seen[:4])
     street, house = t.get("addr:street"), t.get("addr:housenumber")
@@ -509,8 +515,189 @@ def fetch_mos_events(now):
     return out
 
 
+# ---------------------------------------------------------------- подборки (гиды и премии)
+STREET_WORDS = {"улица": "ул", "ул": "ул", "переулок": "пер", "пер": "пер", "проспект": "пр", "пр-т": "пр",
+                "бульвар": "бул", "б-р": "бул", "площадь": "пл", "пл": "пл", "набережная": "наб", "наб": "наб",
+                "шоссе": "ш", "ш": "ш", "проезд": "пр-д", "тупик": "туп", "аллея": "ал", "вал": "вал"}
+
+
+def norm_street(s):
+    s = (s or "").lower().replace("ё", "е")
+    s = re.sub(r"[.,]", " ", s)
+    words = [STREET_WORDS.get(w, w) for w in s.split()]
+    return " ".join(sorted(words))
+
+
+def house_key(s):
+    m = re.match(r"\s*(\d+(?:[а-я](?!\d))?(?:/\d+(?:[а-я](?!\d))?)?)", (s or "").lower().replace("ё", "е"))
+    return m.group(1) if m else ""
+
+
+def split_addr(addr):
+    """«Москва, Трубная улица, 23, корп. 2» -> ("трубная ул" нормализованная, "23")."""
+    parts = [x.strip() for x in (addr or "").split(",")]
+    parts = [x for x in parts if x and x.lower() not in ("москва", "россия")]
+    for i, part in enumerate(parts):
+        if re.match(r"^\d", part) and i > 0:
+            return norm_street(parts[i - 1]), house_key(part)
+    return "", ""
+
+
+def geo_query(addr):
+    a = re.sub(r",\s*корп\.\s*", "к", addr)
+    a = re.sub(r",\s*стр\.\s*", "с", a)
+    a = re.sub(r",\s*подъезд.*$", "", a)
+    return a
+
+
+def short_addr(addr):
+    return re.sub(r"^\s*Москва,\s*", "", addr or "")[:90]
+
+
+GUESS_BAR = re.compile(r"\bбар\b|bar\b|паб|pub|beer|бир|пив|крафт|craft|рюмочн|вин|wine|cocktail|коктейл|taproom|"
+                       r"lounge|сидр|cidr|настоеч|джин|gin\b|prosecco|просекко|prscco|tipsy|brewer|пивовар", re.I)
+
+
+def load_curated():
+    out = []
+    try:
+        lines = open(CURATED, encoding="utf-8").read().splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("# "):
+            continue
+        parts = [x.strip() for x in line.split("|")]
+        if len(parts) < 3 or not parts[0]:
+            continue
+        name, addr, tags = parts[0], parts[1], parts[2].split()
+        labels, tier, pc, kind = [], 2, None, None
+        rank = next((int(t[1:]) for t in tags if re.match(r"^W\d+$", t)), None)
+        if "U50" in tags:
+            labels.append("Ultima Guide 2026: топ-50 ресторанов"); tier = 1
+        if "U20" in tags:
+            labels.append("Ultima Guide 2026: топ-20 баров"); tier = 1
+        if "WM" in tags:
+            labels.append("WhereToEat Москва 2026: топ-10"); tier = 1
+        if rank:
+            labels.append("WhereToEat Россия 2026: №%d" % rank); tier = 1
+        if "AC" in tags:
+            labels.append("«Афиша Daily»: лучшие кофейни"); tier = 1
+        if "UL" in tags and not labels:
+            labels.append("Ultima Guide 2026: длинный список")
+        for t in tags:
+            if re.match(r"^p[1-4]$", t):
+                pc = min(3, int(t[1]))
+            if t in ("bar", "cafe", "rest"):
+                kind = {"bar": "bar", "cafe": "cafe", "rest": "restaurant"}[t]
+        if not kind:
+            kind = "bar" if GUESS_BAR.search(name) else "restaurant"
+        out.append({"n": name, "addr": addr, "labels": labels, "tier": tier, "pc": pc, "k": kind})
+    return out
+
+
+def load_geocache():
+    try:
+        with open(GEOCACHE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def geocode(addr, cache, budget):
+    if addr in cache:
+        return cache[addr]
+    if budget[0] <= 0:
+        return None
+    result = None
+    for q in (geo_query(addr), re.sub(r"(\d+[а-яА-Я]?)(?:[кс/]\S*)?$", r"\1", geo_query(addr))):
+        budget[0] -= 1
+        try:
+            url = NOMINATIM + "?" + urllib.parse.urlencode({"format": "jsonv2", "limit": 1, "countrycodes": "ru", "q": q})
+            res = http_json(url, timeout=30, tries=2)
+        except Exception as e:
+            log("  геокодер: %s (%s)" % (q, e))
+            res = []
+        time.sleep(1.1)   # правила Nominatim: не чаще раза в секунду
+        if res:
+            la, lo = float(res[0]["lat"]), float(res[0]["lon"])
+            if 55.1 < la < 56.1 and 36.8 < lo < 38.0:
+                result = [round(la, 5), round(lo, 5)]
+                break
+    cache[addr] = result
+    return result
+
+
+def apply_curated(places, today):
+    cur = load_curated()
+    if not cur:
+        return places
+    cache = load_geocache()
+    budget = [MAX_GEOCODE]
+    by_name = {}
+    for p in places:
+        by_name.setdefault(norm_name(p["n"]), []).append(p)
+    names = list(by_name)
+    matched = added = missed = 0
+    for c in cur:
+        cn = norm_name(c["n"])
+        cands = []
+        if cn:
+            for n in names:
+                if same_name(n, cn):
+                    cands.extend(by_name[n])
+        street, house = split_addr(c["addr"])
+        target = None
+        if street and house:
+            for p in cands:
+                ps, ph = split_addr("Москва, " + p.get("a", ""))
+                if ps == street and ph and (ph == house or ph.split("/")[0] == house.split("/")[0]):
+                    target = p
+                    break
+        if target is None and len(cands) == 1 and len(cn) >= 6:
+            target = cands[0]
+        coords = None
+        if target is None:
+            coords = geocode(c["addr"], cache, budget) if street else None
+            if coords:
+                near = [p for p in cands if dist_km(coords[0], coords[1], p["la"], p["lo"]) < 0.25]
+                if near:
+                    target = min(near, key=lambda p: dist_km(coords[0], coords[1], p["la"], p["lo"]))
+        if target is None and coords:
+            target = {"n": c["n"], "k": c["k"], "la": coords[0], "lo": coords[1], "s": 0.0, "a": short_addr(c["addr"])}
+            places.append(target)
+            by_name.setdefault(cn, []).append(target)
+            added += 1
+        elif target is None:
+            missed += 1
+            continue
+        else:
+            matched += 1
+        if target["k"] not in ("restaurant", "cafe", "bar", "market"):
+            target["k"] = c["k"]
+        target["g"] = sorted(set(target.get("g", []) + c["labels"]))
+        target["gt"] = min(target.get("gt", 9), c["tier"])
+        target["s"] = target.get("s", 0) + (15 if c["tier"] == 1 else 8)
+        target["y"] = today.year
+        if c["pc"] is not None:
+            target["pc"] = c["pc"]
+        elif "pc" not in target:
+            target["pc"] = 1 if c["k"] == "cafe" else 2
+        target.pop("_ch", None)
+    try:
+        with open(GEOCACHE, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=0, sort_keys=True)
+    except OSError:
+        pass
+    log("Подборки: %d записей, найдено на карте %d, добавлено по адресу %d, не найдено %d%s" % (
+        len(cur), matched, added, missed, " (часть адресов поищу в следующий раз)" if budget[0] <= 0 else ""))
+    return places
+
+
 # ---------------------------------------------------------------- сборка
 def finalize(places, metro):
+    places = [p for p in places if not p.pop("_ch", None)]   # сети без отметок в гидах убираем
     by_kind = {}
     for p in places:
         by_kind.setdefault(p["k"], []).append(p)
@@ -569,6 +756,7 @@ def main():
         events = [e for e in (old.get("events") or []) if any(d[1] >= now for d in e.get("d", []))]
 
     if osm_ok:
+        places = apply_curated(places, datetime.date.today())
         final = finalize(places, metro)
         if not metro:
             metro = old.get("metro") or []
