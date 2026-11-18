@@ -3,122 +3,227 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Генератор вечера · Москва</title>
+<title>Вечер в Москве</title>
 <meta name="description" content="Собирает план на вечер из реальных мест и событий Москвы.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#10142b">
 <style>
+/* Вечер в Москве: сумерки за стеклом. Фон — огни города, всё управление — на стекле поверх них. */
 :root{
-  --bg:#17130f; --panel:#211b16; --panel2:#2a231c; --line:#3a3027;
-  --text:#f3e9dc; --muted:#a8998a; --accent:#f0a24a; --accent2:#e86f4c; --glow:rgba(240,162,74,.18);
+  --ink:#10142b; --dusk:#2b2560; --amber:#ffb547; --rose:#ff5d7a; --teal:#38c7c0;
+  --text:#f6f4ff; --muted:rgba(246,244,255,.64); --faint:rgba(246,244,255,.38);
+  --glass:rgba(255,255,255,.075); --glass-2:rgba(255,255,255,.13); --glass-hi:rgba(255,255,255,.22);
+  --edge:rgba(255,255,255,.18); --edge-lo:rgba(255,255,255,.05);
+  --shadow:0 18px 50px rgba(5,6,22,.45);
+  --amber-ink:#2a1700;
+  --r-xl:34px; --r-l:26px; --r-m:18px; --r-s:12px;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ink:#e9eefb; --dusk:#c9d4f4; --text:#171a2e; --muted:rgba(23,26,46,.62); --faint:rgba(23,26,46,.4);
+    --glass:rgba(255,255,255,.46); --glass-2:rgba(255,255,255,.62); --glass-hi:rgba(255,255,255,.85);
+    --edge:rgba(255,255,255,.9); --edge-lo:rgba(23,26,46,.06); --shadow:0 18px 50px rgba(40,50,110,.16);
+    color-scheme:light;
+  }
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:radial-gradient(1200px 600px at 80% -10%,#3a2615 0%,transparent 60%),radial-gradient(900px 500px at -10% 110%,#2b1a24 0%,transparent 60%),var(--bg);
-  color:var(--text);font-family:Manrope,system-ui,sans-serif;min-height:100vh;line-height:1.5}
-.wrap{max-width:980px;margin:0 auto;padding:48px 20px 60px}
-header{text-align:center;margin-bottom:36px}
-.kicker{letter-spacing:.25em;text-transform:uppercase;font-size:12px;color:var(--accent)}
-h1{font-family:"Playfair Display",serif;font-weight:600;font-size:clamp(38px,6vw,64px);line-height:1.05;margin:10px 0 12px}
-h1 em{font-style:italic;font-weight:500;color:var(--accent)}
-.sub{color:var(--muted);max-width:560px;margin:0 auto}
-.controls{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 22px 8px}
-.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}
-.label{width:110px;flex-shrink:0;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.08em}
-.chips{display:flex;flex-wrap:wrap;gap:8px;flex:1;align-items:center}
-.chip{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer;transition:.15s}
-.chip:hover{border-color:#5a4836}
-.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a120a;font-weight:700}
-.outonly[hidden]{display:none}
-.metro{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;width:210px;max-width:100%}
-.metro::placeholder{color:var(--muted)}
-.metro:focus{outline:none;border-color:var(--accent)}
-.where{color:var(--accent);font-size:13px;width:100%;padding-left:120px;margin-top:-8px}
-.go{display:block;margin:26px auto 34px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a0f07;border:0;
-  font:700 18px Manrope,sans-serif;padding:16px 38px;border-radius:999px;cursor:pointer;box-shadow:0 10px 40px var(--glow);transition:transform .15s}
-.go:hover{transform:translateY(-2px)}
-.go:active{transform:translateY(0)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;position:relative;min-height:160px;display:flex;flex-direction:column}
-.card.locked{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-.ctop{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
-.ctitle{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
-.btns{display:flex;gap:6px}
-.ib{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font-size:15px;display:grid;place-items:center}
-.ib:hover{border-color:var(--accent)}
-.ib[aria-pressed="true"]{background:var(--accent);color:#1a120a;border-color:var(--accent)}
-.main{font-family:"Playfair Display",serif;font-size:22px;line-height:1.25;margin-bottom:6px;overflow-wrap:anywhere}
-.note{color:var(--muted);font-size:14px}
-.guide{font-size:12px;font-weight:700;color:#1a120a;background:linear-gradient(135deg,#f6c76b,var(--accent));border-radius:10px;padding:5px 10px;margin-bottom:10px;line-height:1.35}
-.tag{display:inline-block;font-size:12px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:0 6px 8px 0}
-.meta{font-size:14px;color:var(--text);margin-top:8px;display:grid;gap:3px}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Onest",system-ui,sans-serif;color:var(--text);background:var(--ink);min-height:100vh;
+  line-height:1.5;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+/* огни города за стеклом */
+.lights{position:fixed;inset:-10vmax;z-index:-1;pointer-events:none;
+  background:
+   radial-gradient(38vmax 30vmax at 12% 18%, rgba(255,181,71,.55), transparent 62%),
+   radial-gradient(30vmax 26vmax at 88% 12%, rgba(255,93,122,.42), transparent 60%),
+   radial-gradient(42vmax 34vmax at 78% 78%, rgba(56,199,192,.32), transparent 62%),
+   radial-gradient(36vmax 30vmax at 22% 88%, rgba(124,92,255,.45), transparent 60%),
+   linear-gradient(170deg, var(--dusk), var(--ink) 70%);}
+@media (prefers-color-scheme: light){
+  .lights{background:
+   radial-gradient(38vmax 30vmax at 12% 18%, rgba(255,190,110,.7), transparent 62%),
+   radial-gradient(30vmax 26vmax at 88% 12%, rgba(255,140,165,.55), transparent 60%),
+   radial-gradient(42vmax 34vmax at 78% 78%, rgba(110,220,210,.5), transparent 62%),
+   radial-gradient(36vmax 30vmax at 22% 88%, rgba(150,135,255,.5), transparent 60%),
+   linear-gradient(170deg, #f3f6ff, #dfe6fb 70%);}
+}
+/* стекло: размытие фона, светлая кромка сверху, блик */
+.glass{position:relative;background:var(--glass);border-radius:var(--r-l);
+  -webkit-backdrop-filter:blur(26px) saturate(185%);backdrop-filter:blur(26px) saturate(185%);
+  box-shadow:inset 0 1px 0 var(--edge), inset 0 0 0 1px var(--edge-lo), var(--shadow)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,.06))}
+.wrap{max-width:1040px;margin:0 auto;padding:18px 18px 64px}
+.topnav{position:sticky;top:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 18px;border-radius:999px;margin-bottom:44px}
+.brand{font-weight:650;letter-spacing:-.02em;font-size:17px}
+.navbtns{display:flex;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;font:inherit;font-size:15px;color:var(--text);
+  background:transparent;padding:9px 14px;border-radius:999px;transition:background .2s}
+.pill:hover{background:var(--glass-2)}
+.pill svg{width:18px;height:18px;flex:none}
+.count{font-variant-numeric:tabular-nums;color:var(--muted)}
+header{margin:0 4px 26px}
+h1{font-weight:650;font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-.045em;max-width:12ch}
+.today{margin-top:14px;color:var(--muted);font-size:17px}
+.sub{color:var(--muted);max-width:56ch;margin-top:6px}
+.controls{padding:22px 22px 12px;border-radius:var(--r-xl)}
+.row{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;margin-bottom:12px}
+.row[hidden]{display:none}
+.label{color:var(--muted);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+/* одиночный выбор — сегментированный переключатель */
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:14px;background:rgba(0,0,0,.18);box-shadow:inset 0 1px 2px rgba(0,0,0,.18)}
+@media (prefers-color-scheme: light){ .seg{background:rgba(23,26,46,.07)} }
+.chip{border:0;background:transparent;color:var(--text);padding:7px 13px;border-radius:11px;font:inherit;font-size:14px;cursor:pointer;
+  transition:background .2s, box-shadow .2s, color .2s;white-space:nowrap}
+.chip:hover{background:var(--glass)}
+.chip[aria-pressed="true"]{background:var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 2px 10px rgba(0,0,0,.18);font-weight:600}
+@media (prefers-color-scheme: light){ .chip[aria-pressed="true"]{background:#fff;box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 2px 8px rgba(40,50,110,.14)} }
+/* множественный выбор — отдельные капсулы */
+.multi .chip{border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 1px var(--edge-lo)}
+.multi .chip[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink);box-shadow:none}
+.chip.toggle{border-radius:999px;box-shadow:inset 0 0 0 1px var(--edge)}
+.chip.toggle[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink);box-shadow:none}
+.chip svg{width:15px;height:15px;vertical-align:-2px;margin-right:4px}
+.metro{border:0;background:var(--glass);box-shadow:inset 0 0 0 1px var(--edge-lo);color:var(--text);padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;width:200px;max-width:100%}
+.metro::placeholder{color:var(--faint)}
+.where{grid-column:2;color:var(--muted);font-size:13px;margin-top:-4px}
+.go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:10px 0 8px;border:0;cursor:pointer;
+  font:inherit;font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--amber-ink);padding:17px 24px;border-radius:20px;
+  background:linear-gradient(180deg, #ffd27d, var(--amber));box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 10px 30px rgba(255,181,71,.35);transition:transform .15s}
+.go:active{transform:scale(.985)}
+.go svg{width:20px;height:20px}
+#out{margin-top:26px}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.card{padding:20px;display:flex;flex-direction:column;min-width:0;grid-column:span 3;border-radius:var(--r-l)}
+.card.lead{grid-column:span 4;grid-row:span 2;padding:26px}
+.card.side{grid-column:span 2}
+.card.wide{grid-column:1/-1}
+.card.locked{box-shadow:inset 0 0 0 2px var(--amber), var(--shadow)}
+.ctop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.ctitle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+.ctitle svg{width:17px;height:17px}
+.btns{display:flex;gap:4px}
+.ib{width:34px;height:34px;border-radius:50%;border:0;background:var(--glass);color:var(--text);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.ib svg{width:17px;height:17px}
+.ib:hover{background:var(--glass-2)}
+.ib[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink)}
+.ib.fav[aria-pressed="true"]{background:var(--rose);color:#fff}
+.main{font-weight:650;font-size:23px;line-height:1.2;letter-spacing:-.02em;margin-bottom:6px;overflow-wrap:anywhere}
+.lead .main{font-size:clamp(28px,3.4vw,40px);letter-spacing:-.035em}
+.wide .main{font-size:21px}
+.note{color:var(--muted);font-size:15px}
+.guide{display:inline-flex;align-items:flex-start;gap:6px;font-size:13px;line-height:1.35;color:var(--text);background:rgba(255,181,71,.18);
+  box-shadow:inset 0 0 0 1px rgba(255,181,71,.4);border-radius:12px;padding:6px 10px;margin-bottom:12px;align-self:flex-start}
+.guide svg{width:14px;height:14px;color:var(--amber);flex:none;margin-top:1px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tag{font-size:13px;color:var(--muted);background:var(--glass);border-radius:999px;padding:3px 10px}
+.meta{font-size:15px;margin-top:12px;display:grid;gap:4px}
 .meta span{color:var(--muted)}
-.links{margin-top:auto;padding-top:14px;display:flex;flex-wrap:wrap;gap:8px}
-.links a{color:#1a120a;background:var(--accent);text-decoration:none;font-size:13px;font-weight:700;padding:7px 12px;border-radius:999px}
-.links a.sec{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
-.links a:hover{filter:brightness(1.1);border-color:var(--accent)}
-.card.fade .main,.card.fade .note,.card.fade .meta{animation:in .45s ease}
-@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.card.wide{grid-column:1/-1;background:linear-gradient(135deg,#2c2016,#2a1b20);min-height:0}
-.foot{display:flex;justify-content:center;gap:10px;margin-top:22px;flex-wrap:wrap}
-.ghost{border:1px solid var(--line);background:transparent;color:var(--text);padding:10px 18px;border-radius:999px;font:inherit;cursor:pointer}
-.ghost:hover{border-color:var(--accent)}
-.empty{text-align:center;color:var(--muted);padding:30px 0}
-.banner{background:var(--panel2);border:1px dashed var(--accent);color:var(--text);border-radius:14px;padding:12px 16px;font-size:14px;margin-bottom:16px}
-.credits{margin-top:48px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
+.links{margin-top:auto;padding-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.links a{text-decoration:none;font-size:14px;font-weight:600;padding:9px 14px;border-radius:999px;color:var(--amber-ink);background:var(--amber)}
+.links a.sec{background:var(--glass);color:var(--text);font-weight:500;box-shadow:inset 0 0 0 1px var(--edge-lo)}
+.links a:hover{filter:brightness(1.06)}
+.foot{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.ghost{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--glass);color:var(--text);padding:10px 16px;border-radius:999px;font:inherit;font-size:15px;cursor:pointer;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 var(--edge)}
+.ghost:hover{background:var(--glass-2)}
+.ghost svg{width:17px;height:17px}
+.empty{color:var(--muted);padding:6px 4px}
+.banner{padding:14px 18px;margin-bottom:14px;font-size:15px;border-radius:var(--r-m)}
+.credits{margin-top:56px;color:var(--faint);font-size:13px;line-height:1.7;max-width:70ch}
 .credits a{color:var(--muted)}
-.topnav{display:flex;justify-content:flex-end;gap:8px;margin:-24px 0 18px}
-.ghost.small{padding:7px 14px;font-size:14px}
-.modal{position:fixed;inset:0;background:rgba(10,8,6,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;z-index:10;overflow:auto}
+/* появление плана: один раз, лесенкой */
+.grid.enter .card{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.grid.enter .card:nth-child(2){animation-delay:.05s}.grid.enter .card:nth-child(3){animation-delay:.1s}
+.grid.enter .card:nth-child(4){animation-delay:.15s}.grid.enter .card:nth-child(5){animation-delay:.2s}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.card.swap .main,.card.swap .meta,.card.swap .note{animation:fadein .35s ease}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+/* окно */
+.modal{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;justify-content:center;padding:6vh 14px;overflow:auto;
+  background:rgba(8,10,28,.35);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .modal[hidden]{display:none}
-.sheet{background:var(--panel);border:1px solid var(--line);border-radius:20px;width:100%;max-width:720px;padding:22px}
-.sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.sheet h2{font-family:"Playfair Display",serif;font-weight:600;font-size:28px}
-.sheet h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:18px 0 8px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.fitem{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--line);padding:12px 0}
-.fitem .ft{font-weight:700}.fitem .fs{color:var(--muted);font-size:13px;white-space:pre-line}
-.fitem a{color:var(--accent);font-size:13px}
-.field{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
-.field input,.field textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:9px 12px;font:inherit;font-size:14px}
-.field textarea{width:100%;min-height:70px;font-size:12px}
-.muted{color:var(--muted);font-size:14px}
-.ib.fav[aria-pressed="true"]{background:#e8556b;border-color:#e8556b;color:#fff}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#1a120a;padding:10px 18px;border-radius:12px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
+.sheet{width:100%;max-width:640px;padding:24px;border-radius:var(--r-xl);background:var(--glass-2)}
+.sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sheet h2{font-weight:650;font-size:28px;letter-spacing:-.03em}
+.sheet h3{font-size:17px;font-weight:650;margin:22px 0 8px}
+.tabs{display:inline-flex;margin-bottom:12px}
+.fitem{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:12px 0;border-top:1px solid var(--edge-lo)}
+.fitem .ft{font-weight:600}.fitem .fs{color:var(--muted);font-size:14px;white-space:pre-line}
+.fitem a{color:var(--text);font-size:14px}
+.field{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.field input,.field textarea{background:var(--glass);border:0;box-shadow:inset 0 0 0 1px var(--edge-lo);color:var(--text);border-radius:12px;padding:10px 13px;font:inherit;font-size:15px}
+.field input{flex:1;min-width:180px}
+.field textarea{width:100%;min-height:72px;font-size:12px}
+.field .chip{background:var(--glass);border-radius:999px;box-shadow:inset 0 0 0 1px var(--edge-lo)}
+.muted{color:var(--muted);font-size:15px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);padding:11px 18px;border-radius:999px;font-weight:600;font-size:15px;
+  color:var(--text);background:var(--glass-2);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+  box-shadow:inset 0 1px 0 var(--edge), var(--shadow);opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
-@media (max-width:560px){.label{width:100%}.wrap{padding-top:32px}.where{padding-left:0;margin-top:0}}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass,.sheet{background:rgba(30,32,64,.92)}
+  @media (prefers-color-scheme: light){ .glass,.sheet{background:rgba(255,255,255,.94)} }
+}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
+@media (max-width:820px){
+  .grid{grid-template-columns:1fr 1fr}
+  .card,.card.side{grid-column:span 1}.card.lead,.card.wide{grid-column:1/-1;grid-row:auto}
+}
+@media (max-width:600px){
+  .wrap{padding:10px 12px 48px}
+  .topnav{margin-bottom:30px;padding-left:14px}
+  .pill .lbl{display:none}
+  .row{grid-template-columns:1fr;gap:6px}
+  .where{grid-column:1}
+  .controls{padding:16px 14px 6px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:2px 14px}
+  .chips::-webkit-scrollbar{display:none}
+  .seg{flex-wrap:nowrap}
+  .grid{grid-template-columns:1fr}
+  .card,.card.side,.card.lead,.card.wide{grid-column:1/-1}
+}
 </style>
 </head>
 <body>
+<div class="lights" aria-hidden="true"></div>
 <div class="wrap">
-  <nav class="topnav">
-    <button class="ghost small" id="openFav">❤️ Избранное <span id="favCount"></span></button>
-    <button class="ghost small" id="openSet">⚙️ Настройки</button>
-    <button class="ghost small" id="openAcc" hidden>👤 Войти</button>
+  <nav class="topnav glass">
+    <span class="brand">Вечер в Москве</span>
+    <span class="navbtns">
+      <button class="pill" id="openFav" aria-label="Избранное"><span class="ico" data-i="heart"></span><span class="lbl">Избранное</span> <span class="count" id="favCount"></span></button>
+      <button class="pill" id="openSet" aria-label="Настройки"><span class="ico" data-i="gear"></span><span class="lbl">Настройки</span></button>
+      <button class="pill" id="openAcc" hidden><span class="ico" data-i="user"></span><span class="lbl" id="accLbl">Войти</span></button>
+    </span>
   </nav>
   <header>
-    <div class="kicker">Москва · сегодня вечером</div>
-    <h1>Генератор <em>вечера</em></h1>
-    <p class="sub">Выберите настроение, а я соберу план. Дома — фильм, ужин и занятие. В городе — реальные места и события Москвы с адресами и ссылкой на отзывы.</p>
+    <h1>Чем заняться сегодня вечером</h1>
+    <p class="today" id="today"></p>
   </header>
 
   <div id="banner"></div>
-  <section class="controls" id="controls"></section>
+  <section class="controls glass">
+    <div id="controls"></div>
+    <button class="go" id="go"><span class="ico" data-i="spark"></span>Собрать вечер</button>
+  </section>
 
-  <button class="go" id="go">✨ Собрать вечер</button>
-
-  <section id="out"><p class="empty">Нажмите кнопку, и вечер сложится сам. Понравившиеся пункты можно закрепить 🔒, а остальные перекрутить ↻.</p></section>
+  <section id="out"><p class="empty">Выберите, с кем и в каком настроении, и нажмите «Собрать вечер». Понравившиеся пункты можно закрепить, остальные — заменить.</p></section>
 
   <div class="foot" id="foot" hidden>
-    <button class="ghost" id="savePlan">💾 Сохранить вечер</button>
-    <button class="ghost" id="copy">📋 Скопировать план</button>
-    <button class="ghost" id="reset">Снять все замки</button>
+    <button class="ghost" id="savePlan"><span class="ico" data-i="bookmark"></span>Сохранить вечер</button>
+    <button class="ghost" id="copy"><span class="ico" data-i="copy"></span>Скопировать план</button>
+    <button class="ghost" id="reset"><span class="ico" data-i="unlock"></span>Снять все замки</button>
     <button class="ghost" id="unhide" hidden></button>
   </div>
 
   <div class="credits" id="credits"></div>
 </div>
-<div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true">
-  <div class="sheethead"><h2 id="mTitle"></h2><button class="ib" id="mClose" aria-label="Закрыть">✕</button></div>
+<div class="modal" id="modal" hidden><div class="sheet glass" role="dialog" aria-modal="true">
+  <div class="sheethead"><h2 id="mTitle"></h2><button class="ib" id="mClose" aria-label="Закрыть"><span class="ico" data-i="x"></span></button></div>
   <div id="mBody"></div>
 </div></div>
 <datalist id="metrolist"></datalist>
@@ -127,6 +232,35 @@ h1 em{font-style:italic;font-weight:500;color:var(--accent)}
 <script src="firebase-config.js?v=2"></script>
 <script>
 'use strict';
+// иконки: тонкие линии, как в системных приложениях
+const IC = {
+  heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  heartf:'<path fill="currentColor" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  unlock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>',
+  shuffle:'<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
+  eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7a13 13 0 0 1-3 4.2M6.6 6.6A13 13 0 0 0 2 12c1 2.5 5 7 10 7a10 10 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  bookmark:'<path d="M6 3h12v18l-6-4-6 4z"/>',
+  star:'<path fill="currentColor" d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"/>',
+  pin:'<path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  ticket:'<path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z"/><path d="M14 6v12" stroke-dasharray="2 2"/>',
+  fork:'<path d="M7 3v8a2 2 0 0 0 4 0V3M9 11v10"/><path d="M17 21V3c-2 1-3 4-3 7h3"/>',
+  glass:'<path d="M6 3h12l-6 8z"/><path d="M12 11v9M8 21h8"/>',
+  music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  film:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+  pan:'<circle cx="10" cy="13" r="6"/><path d="M16 13h6"/>',
+  dice:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/>',
+  quote:'<path d="M7 7h4v4c0 3-2 5-4 6M14 7h4v4c0 3-2 5-4 6"/>',
+  locate:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/>',
+};
+const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`;
+const SLOT_ICON = {go:'pin',event:'ticket',eat:'fork',music:'music',rule:'quote',watch:'film',food:'pan',do:'dice'};
+function paintIcons(root){ (root||document).querySelectorAll('.ico[data-i]').forEach(e=>{ e.outerHTML = icon(e.dataset.i); }); }
 // =====================================================================
 //  Параметры вечера
 // =====================================================================
@@ -181,10 +315,20 @@ function avgCheck(p){
   const r = t[Math.min(4, lvl)];
   return `≈ ${rub(r[0])}–${rub(r[1])} ₽`;
 }
-const state = {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false};
+const state = {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false,venue:'any'};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('evening-state-v2')||'{}')); }catch(e){}
 if(!Array.isArray(state.want)) state.want = [];
 if(!CUISINES.some(c=>c[0]===state.cuisine)) state.cuisine = 'any';
+if(!['any','rest','cafe','bar'].includes(state.venue)) state.venue = 'any';
+// недавно показанные места: помним между визитами, чтобы не повторяться
+let recent = [];
+try{ recent = JSON.parse(localStorage.getItem('evening-recent')||'[]'); }catch(e){}
+let recentSet = new Set(recent);
+function remember(p){
+  const k = p.n+'|'+p.la+'|'+p.lo; if(recentSet.has(k)) return;
+  recent.push(k); if(recent.length>400) recent = recent.slice(-400); recentSet = new Set(recent);
+  try{ localStorage.setItem('evening-recent', JSON.stringify(recent)); }catch(e){}
+}
 // места, которые пользователь попросил больше не предлагать (хранятся только в этом браузере)
 let hidden = new Set();
 try{ hidden = new Set(JSON.parse(localStorage.getItem('evening-hidden')||'[]')); }catch(e){}
@@ -478,15 +622,18 @@ function activityWeights(){
 }
 function cuisineKeys(){ return CUISINES.find(c=>c[0]===state.cuisine)[2]; }
 function foodWeights(){
+  if(state.venue==='rest') return {restaurant:1};
+  if(state.venue==='cafe') return {cafe:3, market:1};
+  if(state.venue==='bar') return state.who==='family' ? {cafe:1} : {bar:1};
   let w;
   if(state.budget==='free') w = {cafe:3,market:2};
-  else if(state.budget==='low') w = {cafe:3,market:2,restaurant:2,bar:1};
-  else w = {restaurant:4,bar:1,market:1,cafe:.5};
+  else if(state.budget==='low') w = {cafe:3,restaurant:3,market:1.5,bar:.5};
+  else w = {restaurant:5,cafe:1,market:.7,bar:.7};
   if(state.mood==='romance' && state.budget==='high'){ w.restaurant+=2; delete w.market; }
-  if(state.mood==='fun' && state.budget!=='free') w.bar=(w.bar||0)+2;
-  if(state.who==='friends' && state.budget!=='free') w.bar=(w.bar||0)+1;
+  if(state.mood==='fun' && state.budget!=='free') w.bar=(w.bar||0)+1;
+  if(state.who==='friends' && state.budget!=='free') w.bar=(w.bar||0)+.5;
   if(state.who==='solo') w.cafe=(w.cafe||0)+2;
-  if(cuisineKeys().length){ ['restaurant','cafe','bar','market'].forEach(k=>{ if(!w[k] && !(state.budget==='free'&&(k==='restaurant'||k==='bar'))) w[k]=1; }); }
+  if(cuisineKeys().length){ ['restaurant','cafe','market'].forEach(k=>{ if(!w[k] && !(state.budget==='free'&&k==='restaurant')) w[k]=1; }); }
   if(state.who==='family') delete w.bar;
   return w;
 }
@@ -495,24 +642,30 @@ function dist(a,b,c,d){ const p=Math.PI/180, x=(d-b)*p*Math.cos((a+c)/2*p), y=(c
 function radiusKm(){ return state.origin ? RADII.find(r=>r[0]===state.radius)[2] : 1e9; }
 const seen = {}; // чтобы при перекручивании варианты не повторялись
 
-// выбирает место: сначала категорию по весам, потом одно из лучших в ней
-// opt.maxPc — потолок по тратам, opt.cuisine — список подстрок кухни
+const KIDS_RE = /детск|для детей|юношеск|школ|кукольн|юного|малыш/i;
+// выбирает место: сначала категорию по весам, потом одно из подходящих в ней.
+// opt.maxPc — потолок по тратам, opt.cuisine — подстроки кухни, opt.exclude — что точно не показывать
 function pickPlace(weights, anchor, maxKm, slot, opt){
   opt = opt || {};
   const groups = {};
   for(const p of DATA.places){
     const w = weights[p.k]; if(!w) continue;
-    if(hidden.has(pkey(p))) continue;
+    const key = pkey(p);
+    if(hidden.has(key) || key===opt.exclude) continue;
     if(opt.maxPc!=null && (p.pc==null ? 2 : p.pc) > opt.maxPc) continue;
     if(opt.onlyTop && !p.g) continue;
+    if(state.who!=='family' && KIDS_RE.test(p.n)) continue;
     if(opt.cuisine && opt.cuisine.length && !(p.c && opt.cuisine.some(c=>p.c.includes(c)))) continue;
     if(anchor && maxKm<1e8 && dist(anchor.la,anchor.lo,p.la,p.lo)>maxKm) continue;
     (groups[p.k]=groups[p.k]||[]).push(p);
   }
-  const kinds = Object.keys(groups); if(!kinds.length) return null;
+  if(!Object.keys(groups).length) return null;
+  if(opt.minPool && Object.values(groups).reduce((n,l)=>n+l.length,0) < opt.minPool) return null;
   const sset = seen[slot] = seen[slot] || new Set();
-  // убираем уже показанные; если кончились все варианты — начинаем круг заново
-  let fresh = {}; kinds.forEach(k=>{ const f=groups[k].filter(p=>!sset.has(p)); if(f.length) fresh[k]=f; });
+  // сначала то, что ещё не показывали ни сейчас, ни в прошлые визиты; потом то, что не показывали сейчас
+  const pass = f => { const o = {}; for(const k in groups){ const l = groups[k].filter(f); if(l.length) o[k] = l; } return o; };
+  let fresh = pass(p=>!sset.has(p) && !recentSet.has(pkey(p)));
+  if(!Object.keys(fresh).length) fresh = pass(p=>!sset.has(p));
   if(!Object.keys(fresh).length){ sset.clear(); fresh = groups; }
   const ks = Object.keys(fresh);
   let total = ks.reduce((s,k)=>s+weights[k],0), r = Math.random()*total, kind = ks[0];
@@ -521,13 +674,13 @@ function pickPlace(weights, anchor, maxKm, slot, opt){
   const picked = list.filter(x=>x.g), rest = list.filter(x=>!x.g);
   let p;
   if(picked.length && (!rest.length || Math.random() < .6)){
-    const t1 = picked.filter(x=>x.gt===1), pool = t1.length && Math.random()<.4 ? t1 : picked;
+    const t1 = picked.filter(x=>x.gt===1), pool = t1.length && Math.random()<.25 ? t1 : picked;
     p = pool[Math.floor(Math.random()*pool.length)];
   } else {
-    const top = rest.slice(0, Math.max(8, Math.min(60, Math.ceil(rest.length*.35))));
+    const top = rest.slice(0, Math.max(10, Math.min(150, Math.ceil(rest.length*.4))));
     p = top[Math.floor(Math.random()*top.length)];
   }
-  sset.add(p); return p;
+  sset.add(p); remember(p); return p;
 }
 
 // ---------- события ----------
@@ -599,7 +752,7 @@ function afishaLink(){
   const period = state.day==='weekend' ? Math.max(1, Math.round((win[1]-from)/86400)) : 1;
   const [cat, label] = afishaCat();
   const when = state.day==='today' ? 'на сегодня' : state.day==='tomorrow' ? 'на завтра' : 'на выходные';
-  return {url:`https://afisha.yandex.ru/moscow/${cat}?date=${date}&period=${period}`, text:`${label[0].toUpperCase()+label.slice(1)} ${when} на Яндекс Афише ↗`};
+  return {url:`https://afisha.yandex.ru/moscow/${cat}?date=${date}&period=${period}`, text:`${label[0].toUpperCase()+label.slice(1)} ${when} на Яндекс Афише`};
 }
 
 // =====================================================================
@@ -626,10 +779,10 @@ function pickIdea(list, avoid){
 }
 const hasData = ()=> !!(DATA && DATA.places && DATA.places.length);
 function slots(){
-  if(state.place==='home') return [['watch','🎬 Посмотреть'],['food','🍳 Поесть'],['do','🎲 Занятие'],['music','🎧 Фоном играет'],['rule','✦ Правило вечера']];
-  const s = [['go','📍 Куда пойти']];
-  if(hasData() && DATA.events && DATA.events.length) s.push(['event','🎟 Или событие']);
-  s.push(['eat','🍜 Где поесть'],['music','🎧 Плейлист в дорогу'],['rule','✦ Правило вечера']);
+  if(state.place==='home') return [['watch','Посмотреть'],['food','Поесть'],['do','Занятие'],['music','Фоном играет'],['rule','Правило вечера']];
+  const s = [['go','Куда пойти']];
+  if(hasData() && DATA.events && DATA.events.length) s.push(['event','Или событие']);
+  s.push(['eat', state.venue==='bar' && state.who!=='family' ? 'Где выпить' : 'Где поесть'],['music','Плейлист в дорогу'],['rule','Правило вечера']);
   return s;
 }
 let current = {}, locks = {};
@@ -643,17 +796,21 @@ function rollSlot(k){
   const prev = current[k];
   if(k==='go'){
     if(!hasData()){ current.go = pickIdea(DB.go, prev&&prev.t); return; }
-    const w = activityWeights(), opt = {maxPc:maxPc()};
+    const w = activityWeights(), opt = {maxPc:maxPc(), exclude: prev && prev.type==='place' ? pkey(prev.p) : null};
     let p = pickPlace(w, state.origin, radiusKm(), 'go', opt), far = false;
     if(!p && state.origin && radiusKm()<1e8){ p = pickPlace(w, null, 1e9, 'go', opt); far = !!p; }
     current.go = p ? {type:'place', p, far} : {type:'none', msg:NOTHING};
   } else if(k==='eat'){
     if(!hasData()){ current.eat = pickIdea(DB.eatout, prev&&prev.t); return; }
     const a = anchorFor('eat'), w = foodWeights();
-    const opt = {maxPc: state.budget==='high' ? 3 : (state.budget==='low' && state.onlyTop ? 2 : 1), cuisine: cuisineKeys(), onlyTop: state.onlyTop};
+    const opt = {maxPc: state.budget==='high' ? 3 : (state.budget==='low' && state.onlyTop ? 2 : 1), cuisine: cuisineKeys(), onlyTop: state.onlyTop,
+                 exclude: prev && prev.type==='place' ? pkey(prev.p) : null};
     const steps = a ? (current.go && current.go.type==='place' ? [1.2,2.5,5,1e9] : [radiusKm(),1e9]) : [1e9];
     let p = null;
-    for(const km of steps){ p = pickPlace(w, a, km, 'eat', opt); if(p) break; }
+    for(let i=0; i<steps.length; i++){
+      p = pickPlace(w, a, steps[i], 'eat', Object.assign({}, opt, {minPool: i<steps.length-1 ? 6 : 0}));
+      if(p) break;
+    }
     current.eat = p ? {type:'place', p} : {type:'none', msg:NOTHING};
   } else if(k==='event'){
     let c = pickEvent(state.origin, radiusKm());
@@ -675,8 +832,9 @@ function generate(){
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u => /^https?:\/\//i.test(u||'') ? u : '';
 function yandex(p){
-  const q = encodeURIComponent(p.n + (p.a ? ', '+p.a : ', Москва'));
-  return `https://yandex.ru/maps/?text=${q}&ll=${p.lo}%2C${p.la}&z=17`;
+  const kind = (KIND[p.k]||'').toLowerCase().replace(/ или .*$/,'');
+  const q = encodeURIComponent(`${kind} ${p.n}, ${p.a ? 'Москва, '+p.a : 'Москва'}`);
+  return `https://yandex.ru/maps/?text=${q}&ll=${p.lo}%2C${p.la}&z=17&mode=search`;
 }
 function hoursRu(h){
   if(!h) return '';
@@ -704,11 +862,11 @@ function placeHtml(k, p, isFar){
   const a = anchorFor(k);
   if(a && a!==p){ const d = dist(a.la,a.lo,p.la,p.lo);
     meta.push(`<div><span>${k==='eat'&&a!==state.origin?'От первого места':'От вас'}:</span> ${kmText(d)}</div>`); }
-  const links = [`<a href="${esc(yandex(p))}" target="_blank" rel="noopener">Отзывы на Яндекс Картах ↗</a>`];
+  const links = [`<a href="${esc(yandex(p))}" target="_blank" rel="noopener">Отзывы на Яндекс Картах</a>`];
   if(safeUrl(p.w)) links.push(`<a class="sec" href="${esc(p.w)}" target="_blank" rel="noopener">Сайт</a>`);
   const far = (k==='go' && isFar) ? '<div class="note" style="margin-top:6px">Рядом ничего подходящего не нашлось, поэтому вариант подальше.</div>' : '';
-  const guide = p.g ? `<div class="guide">⭐ ${p.g.map(esc).join(' · ')}</div>` : '';
-  return `${guide}<div><span class="tag">${esc(KIND[p.k]||'Место')}</span>${p.c?`<span class="tag">${esc(p.c)}</span>`:''}${p.f?'<span class="tag">вход свободный</span>':(p.pc!=null?`<span class="tag">${PC_LABEL[p.pc]}</span>`:'')}</div>
+  const guide = p.g ? `<div class="guide">${icon('star')}<span>${p.g.map(esc).join('<br>')}</span></div>` : '';
+  return `${guide}<div class="tags"><span class="tag">${esc(KIND[p.k]||'Место')}</span>${p.c?`<span class="tag">${esc(p.c)}</span>`:''}${p.f?'<span class="tag">вход свободный</span>':(p.pc!=null?`<span class="tag">${PC_LABEL[p.pc]}</span>`:'')}</div>
     <div class="main">${esc(p.n)}</div><div class="note">${esc(TIP[p.k] || '')}</div>${far}
     <div class="meta">${meta.join('')}</div><div class="links">${links.join('')}</div>`;
 }
@@ -719,41 +877,43 @@ function eventHtml(c){
   if(e.m) meta.push(`<div><span>Метро:</span> ${esc(e.m)}</div>`);
   if(e.fr) meta.push('<div><span>Цена:</span> бесплатно</div>'); else if(e.pr) meta.push(`<div><span>Цена:</span> ${esc(e.pr)}</div>`);
   if(state.origin && e.la!=null) meta.push(`<div><span>От вас:</span> ${kmText(dist(state.origin.la,state.origin.lo,e.la,e.lo))}</div>`);
-  return `<div><span class="tag">${esc(kind)}</span>${e.ag?`<span class="tag">${e.ag}+</span>`:''}</div>
+  return `<div class="tags"><span class="tag">${esc(kind)}</span>${e.ag?`<span class="tag">${e.ag}+</span>`:''}</div>
     <div class="main">${esc(e.t)}</div><div class="meta">${meta.join('')}</div>
-    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее на mos.ru ↗</a>`:''}${afishaBtn()}</div>`;
+    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее на mos.ru</a>`:''}${afishaBtn()}</div>`;
 }
 function ideaLinks(k, it){
   const L = (href, text, sec) => `<a${sec?' class="sec"':''} href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
   if(k==='music'){
     const q = encodeURIComponent(it.q || it.t);
-    return `<div class="links">${L('https://music.yandex.ru/search?text='+q,'▶ Яндекс Музыка')}${L('https://vk.com/audio?q='+q,'VK Музыка',1)}${L('https://www.youtube.com/results?search_query='+q+'+playlist','YouTube',1)}</div>`;
+    return `<div class="links">${L('https://music.yandex.ru/search?text='+q,'Слушать в Яндекс Музыке')}${L('https://vk.com/audio?q='+q,'VK Музыка',1)}${L('https://www.youtube.com/results?search_query='+q+'+playlist','YouTube',1)}</div>`;
   }
   if(k==='watch'){
     const name = it.t.replace(/^Сериал\s*/,'').replace(/[«»]/g,'').replace(/\s*\(\d{4}\).*$/,'').replace(/,.*$/,'');
     const q = encodeURIComponent(name);
-    return `<div class="links">${L('https://www.kinopoisk.ru/index.php?kp_query='+q,'▶ Найти на Кинопоиске')}</div>`;
+    return `<div class="links">${L('https://www.kinopoisk.ru/index.php?kp_query='+q,'Найти на Кинопоиске')}</div>`;
   }
-  if(k==='food') return `<div class="links">${L('https://eda.yandex.ru/moscow','Лень готовить? Яндекс Еда ↗',1)}</div>`;
+  if(k==='food') return `<div class="links">${L('https://eda.yandex.ru/moscow','Заказать на Яндекс Еде',1)}</div>`;
   return '';
 }
 function afishaBtn(){ const a = afishaLink(); return `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.text)}</a>`; }
 function render(anim){
   const out = document.getElementById('out');
-  out.innerHTML = '<div class="grid">'+slots().map(([k,title])=>{
+  out.innerHTML = `<div class="grid${anim===true?' enter':''}">`+slots().map(([k,title])=>{
     const it = current[k]; if(!it) return '';
     let body;
     if(it.type==='place') body = placeHtml(k, it.p, it.far);
     else if(it.type==='event') body = eventHtml(it);
     else if(it.type==='none') body = `<div class="note">${esc(it.msg)}</div>${k==='event'?`<div class="links">${afishaBtn()}</div>`:''}`;
     else body = `<div class="main">${esc(it.t)}</div><div class="note">${esc(it.n)}</div>${ideaLinks(k, it)}`;
-    return `<div class="card${k==='rule'?' wide':''}${locks[k]?' locked':''}${anim?' fade':''}" data-k="${k}">
-      <div class="ctop"><span class="ctitle">${title}</span>
+    const size = (k==='go'||k==='watch') ? ' lead' : (k==='event'||k==='food') ? ' side' : k==='rule' ? ' wide' : '';
+    const fav = isFav(itemOf(k));
+    return `<div class="card glass${size}${locks[k]?' locked':''}${anim==='swap'?' swap':''}" data-k="${k}">
+      <div class="ctop"><span class="ctitle">${icon(SLOT_ICON[k]||'spark')}${title}</span>
         <span class="btns">
-          ${it.type!=='none'?`<button class="ib fav" data-act="fav" aria-pressed="${isFav(itemOf(k))}" title="В избранное" aria-label="В избранное">${isFav(itemOf(k))?'♥':'♡'}</button>`:''}
-          ${it.type==='place'?'<button class="ib" data-act="hide" title="Больше не предлагать это место" aria-label="Больше не предлагать это место">🚫</button>':''}
-          <button class="ib" data-act="lock" aria-pressed="${!!locks[k]}" title="Закрепить" aria-label="Закрепить">${locks[k]?'🔒':'🔓'}</button>
-          <button class="ib" data-act="roll" title="Другой вариант" aria-label="Другой вариант">↻</button>
+          ${it.type!=='none'?`<button class="ib fav" data-act="fav" aria-pressed="${fav}" title="${fav?'Убрать из избранного':'В избранное'}" aria-label="${fav?'Убрать из избранного':'В избранное'}">${icon(fav?'heartf':'heart')}</button>`:''}
+          ${it.type==='place'?`<button class="ib" data-act="hide" title="Больше не предлагать" aria-label="Больше не предлагать это место">${icon('eyeoff')}</button>`:''}
+          <button class="ib" data-act="lock" aria-pressed="${!!locks[k]}" title="${locks[k]?'Открепить':'Закрепить'}" aria-label="Закрепить">${icon(locks[k]?'lock':'unlock')}</button>
+          <button class="ib" data-act="roll" title="Другой вариант" aria-label="Другой вариант">${icon('shuffle')}</button>
         </span></div>${body}</div>`;
   }).join('')+'</div>';
   document.getElementById('foot').hidden = false;
@@ -768,33 +928,34 @@ document.getElementById('out').addEventListener('click',e=>{
   rollSlot(k);
   if(k==='go' && !locks.eat && current.eat) rollSlot('eat'); // еда подтягивается к новому месту
   render(false);
-  [k].concat(k==='go'?['eat']:[]).forEach(x=>{ const c=document.querySelector(`.card[data-k="${x}"]`); if(c) c.classList.add('fade'); });
+  [k].concat(k==='go'?['eat']:[]).forEach(x=>{ const c=document.querySelector(`.card[data-k="${x}"]`); if(c) c.classList.add('swap'); });
 });
 
 // ---------- панель параметров ----------
 const ctl = document.getElementById('controls');
 function drawControls(){
   const out = state.place==='out';
-  let h = DIMS.map(d=>`<div class="row${d.out?' outonly':''}"${d.out&&!out?' hidden':''}><span class="label">${d.label}</span><div class="chips">${
+  let h = DIMS.map(d=>`<div class="row${d.out?' outonly':''}"${d.out&&!out?' hidden':''}><span class="label">${d.label}</span><div class="chips"><div class="seg" role="group" aria-label="${d.label}">${
     d.opts.map(o=>`<button class="chip" data-d="${d.key}" data-v="${o[0]}" aria-pressed="${state[d.key]===o[0]}">${o[1]}</button>`).join('')
-  }</div></div>`).join('');
+  }</div></div></div>`).join('');
   const show = out && hasData();
-  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Что хочется</span><div class="chips">
+  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Что хочется</span><div class="chips multi">
       <button class="chip" data-want="" aria-pressed="${!state.want.length}">Что угодно</button>${
       WANT.map(w=>`<button class="chip" data-want="${w[0]}" aria-pressed="${state.want.includes(w[0])}">${w[1]}</button>`).join('')}</div></div>`;
-  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Кухня</span><div class="chips">${
-      CUISINES.map(c=>`<button class="chip" data-d="cuisine" data-v="${c[0]}" aria-pressed="${state.cuisine===c[0]}">${c[1]}</button>`).join('')}</div></div>`;
-  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Еда и бары</span><div class="chips">
-      <button class="chip" id="onlytop" aria-pressed="${!!state.onlyTop}">⭐ Только из гидов и премий</button></div></div>`;
+  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Кухня</span><div class="chips"><div class="seg">${
+      CUISINES.map(c=>`<button class="chip" data-d="cuisine" data-v="${c[0]}" aria-pressed="${state.cuisine===c[0]}">${c[1]}</button>`).join('')}</div></div></div>`;
+  h += `<div class="row outonly"${show?'':' hidden'}><span class="label">Заведение</span><div class="chips"><div class="seg">${
+      [['any','Любое'],['rest','Ресторан'],['cafe','Кафе и кофейня'],['bar','Бар']].map(v=>`<button class="chip" data-d="venue" data-v="${v[0]}" aria-pressed="${state.venue===v[0]}">${v[1]}</button>`).join('')}</div>
+      <button class="chip toggle" id="onlytop" aria-pressed="${!!state.onlyTop}">${icon('star')}Только из гидов и премий</button></div></div>`;
   const hasMetro = DATA && DATA.metro && DATA.metro.length;
   h += `<div class="row outonly"${out&&hasData()?'':' hidden'}><span class="label">Рядом с</span><div class="chips">
       ${hasMetro?`<input class="metro" id="metro" list="metrolist" placeholder="станция метро" autocomplete="off" value="${esc(state.origin&&state.origin.metro?state.origin.name:'')}">`:''}
-      <button class="chip" id="geo" aria-pressed="${!!(state.origin&&!state.origin.metro)}">📍 Рядом со мной</button>
-      ${state.origin?'<button class="chip" id="noorigin">✕ Сбросить</button>':''}
+      <button class="chip toggle" id="geo" aria-pressed="${!!(state.origin&&!state.origin.metro)}">${icon('locate')}Рядом со мной</button>
+      ${state.origin?'<button class="chip toggle" id="noorigin">По всей Москве</button>':''}
     </div>
     ${state.origin?`<div class="where">Ищу рядом: ${esc(state.origin.name)}</div>`:''}</div>`;
-  h += `<div class="row outonly"${out&&hasData()&&state.origin?'':' hidden'}><span class="label">Как далеко</span><div class="chips">${
-    RADII.map(r=>`<button class="chip" data-d="radius" data-v="${r[0]}" aria-pressed="${state.radius===r[0]}">${r[1]}</button>`).join('')}</div></div>`;
+  h += `<div class="row outonly"${out&&hasData()&&state.origin?'':' hidden'}><span class="label">Как далеко</span><div class="chips"><div class="seg">${
+    RADII.map(r=>`<button class="chip" data-d="radius" data-v="${r[0]}" aria-pressed="${state.radius===r[0]}">${r[1]}</button>`).join('')}</div></div></div>`;
   ctl.innerHTML = h;
 }
 function setOrigin(o){ state.origin = o; Object.keys(seen).forEach(k=>delete seen[k]); save(); drawControls(); }
@@ -833,7 +994,7 @@ document.getElementById('unhide').onclick = ()=>{ hidden.clear(); saveHidden(); 
 document.getElementById('copy').onclick = async ()=>{
   const lines = slots().map(([k,t])=>{
     const it = current[k]; if(!it || it.type==='none') return '';
-    const head = t.replace(/^\S+\s/,'');
+    const head = t;
     if(it.type==='place') return `${head}: ${it.p.n}${it.p.a?' ('+it.p.a+')':''}${it.p.m?', м. '+it.p.m:''}\n${yandex(it.p)}`;
     if(it.type==='event') return `${head}: ${it.e.t}. ${fmtWhen(it.sl)}${it.e.p?', '+it.e.p:''}\n${it.e.u}`;
     return `${head}: ${it.t}. ${it.n}`;
@@ -868,14 +1029,14 @@ const isFav = x => !!x && Store.data.favs.some(f=>f.id===x.id);
 function toggleFav(x){
   if(!x) return;
   if(isFav(x)){ Store.data.favs = Store.data.favs.filter(f=>f.id!==x.id); toast('Убрано из избранного'); }
-  else { Store.data.favs.unshift(Object.assign({ts:Date.now()}, x)); toast('Добавлено в избранное ❤️'); }
+  else { Store.data.favs.unshift(Object.assign({ts:Date.now()}, x)); toast('Добавлено в избранное'); }
   Store.save();
 }
 function updateFavCount(){ const n = Store.data.favs.length + Store.data.plans.length; document.getElementById('favCount').textContent = n ? `(${n})` : ''; }
 function planText(){
   return slots().map(([k,t])=>{
     const it = current[k]; if(!it || it.type==='none') return '';
-    const head = t.replace(/^\S+\s/,'');
+    const head = t;
     if(it.type==='place') return `${head}: ${it.p.n}${it.p.a?' ('+it.p.a+')':''}${it.p.m?', м. '+it.p.m:''}`;
     if(it.type==='event') return `${head}: ${it.e.t}. ${fmtWhen(it.sl)}`;
     return `${head}: ${it.t}`;
@@ -900,20 +1061,20 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !modal.hidden) 
 
 let favTab = 'places';
 function favLink(f){
-  if(f.url) return `<a href="${esc(f.url)}" target="_blank" rel="noopener">${f.kind==='event'?'Подробнее ↗':'На карте ↗'}</a>`;
-  if(f.slot==='music' && f.q) return `<a href="https://music.yandex.ru/search?text=${encodeURIComponent(f.q)}" target="_blank" rel="noopener">Слушать ↗</a>`;
+  if(f.url) return `<a href="${esc(f.url)}" target="_blank" rel="noopener">${f.kind==='event'?'Подробнее':'На карте'}</a>`;
+  if(f.slot==='music' && f.q) return `<a href="https://music.yandex.ru/search?text=${encodeURIComponent(f.q)}" target="_blank" rel="noopener">Слушать</a>`;
   return '';
 }
 function drawFav(){
   const F = Store.data.favs;
   const lists = {places:F.filter(f=>f.kind!=='idea'), ideas:F.filter(f=>f.kind==='idea'), plans:Store.data.plans};
   const tab = (id, label) => `<button class="chip" data-tab="${id}" aria-pressed="${favTab===id}">${label} (${lists[id].length})</button>`;
-  let h = `<div class="tabs">${tab('places','Места и события')}${tab('ideas','Идеи')}${tab('plans','Вечера')}</div>`;
+  let h = `<div class="tabs seg">${tab('places','Места и события')}${tab('ideas','Идеи')}${tab('plans','Вечера')}</div>`;
   const L = lists[favTab];
-  if(!L.length) h += `<p class="muted">Пока пусто. Нажмите ♡ на карточке${favTab==='plans'?' или «💾 Сохранить вечер» под планом':''}, и оно появится здесь.</p>`;
+  if(!L.length) h += `<p class="muted">Пока пусто. Нажмите на сердечко на карточке${favTab==='plans'?' или «Сохранить вечер» под планом':''}, и оно появится здесь.</p>`;
   h += L.map(f=> favTab==='plans'
-    ? `<div class="fitem"><div><div class="ft">${esc(f.title)}</div><div class="fs">${esc(f.text)}</div></div><button class="ib" data-del="${esc(f.id)}" aria-label="Удалить">✕</button></div>`
-    : `<div class="fitem"><div><div class="ft">${esc(f.title)}</div><div class="fs">${esc(SLOT_NAME[f.slot]||'')}${f.sub?' · '+esc(f.sub):''}</div>${favLink(f)}</div><button class="ib" data-del="${esc(f.id)}" aria-label="Удалить">✕</button></div>`).join('');
+    ? `<div class="fitem"><div><div class="ft">${esc(f.title)}</div><div class="fs">${esc(f.text)}</div></div><button class="ib" data-del="${esc(f.id)}" aria-label="Удалить">${icon('x')}</button></div>`
+    : `<div class="fitem"><div><div class="ft">${esc(f.title)}</div><div class="fs">${esc(SLOT_NAME[f.slot]||'')}${f.sub?', '+esc(f.sub):''}</div>${favLink(f)}</div><button class="ib" data-del="${esc(f.id)}" aria-label="Удалить">${icon('x')}</button></div>`).join('');
   openModal('Избранное', h);
 }
 document.getElementById('openFav').onclick = drawFav;
@@ -938,7 +1099,7 @@ function drawSettings(){
     <div class="field"><span class="muted">Убрано из подбора: ${hidden.size}</span>${hidden.size?'<button class="chip" data-set="unhide">Вернуть все</button>':''}</div>
     <h3>Перенос на другое устройство</h3>
     <p class="muted">Скопируйте код и вставьте его на другом телефоне или компьютере. Перенесутся избранное, сохранённые вечера, скрытые места и параметры.</p>
-    <div class="field"><button class="chip" data-set="export">📋 Скопировать код</button></div>
+    <div class="field"><button class="chip" data-set="export">Скопировать код</button></div>
     <div class="field"><textarea id="importCode" placeholder="Вставьте код с другого устройства"></textarea></div>
     <div class="field"><button class="chip" data-set="import">Загрузить из кода</button></div>
     <h3>Сброс</h3>
@@ -946,7 +1107,7 @@ function drawSettings(){
 }
 document.getElementById('openSet').onclick = drawSettings;
 document.getElementById('openAcc').onclick = drawSettings;
-function updateAccButton(){ const b = document.getElementById('openAcc'); b.hidden = !Account.enabled; b.textContent = Account.user ? '👤 '+(Account.user.email||'Аккаунт').split('@')[0] : '👤 Войти'; }
+function updateAccButton(){ const b = document.getElementById('openAcc'); b.hidden = !Account.enabled; document.getElementById('accLbl').textContent = Account.user ? (Account.user.email||'Аккаунт').split('@')[0] : 'Войти'; }
 
 const b64e = s => btoa(unescape(encodeURIComponent(s))), b64d = s => decodeURIComponent(escape(atob(s)));
 let wipeArmed = false;
@@ -979,7 +1140,7 @@ async function settingsAction(a){
       toast('Данные загружены'); drawSettings();
     }catch(e){ toast('Код не подошёл. Скопируйте его целиком'); }
   } else if(a==='reset'){
-    Object.assign(state, {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false});
+    Object.assign(state, {who:'duo',mood:'cozy',energy:'mid',budget:'low',place:'out',day:'today',radius:'any',origin:null,want:[],cuisine:'any',onlyTop:false,venue:'any'});
     save(); drawControls(); toast('Параметры сброшены'); drawSettings();
   } else if(a==='wipe'){
     if(!wipeArmed){ wipeArmed = true; toast('Нажмите ещё раз, чтобы удалить избранное, вечера и скрытые места'); setTimeout(()=>wipeArmed=false, 4000); return; }
@@ -1036,7 +1197,7 @@ function credits(){
     const when = isNaN(d) ? '' : d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
     h += `Мест в базе: ${DATA.places.length.toLocaleString("ru-RU")} · событий: ${(DATA.events||[]).length.toLocaleString("ru-RU")}${when?' · обновлено '+when:''}<br>`;
   }
-  h += 'Места: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL) · события: <a href="https://www.mos.ru/afisha/" target="_blank" rel="noopener">афиша mos.ru</a><br>Значком ⭐ отмечены места из гидов Ultima Guide, премии WhereToEat и подборок «Афиши Daily». У остальных оценок нет, а часть могла закрыться. Перед выходом проверьте место по ссылке на карты. Кнопка 🚫 убирает место из подбора.';
+  h += 'Места: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), события: <a href="https://www.mos.ru/afisha/" target="_blank" rel="noopener">афиша mos.ru</a><br>Значком со звездой отмечены места из гидов Ultima Guide, премии WhereToEat и подборок «Афиши Daily». У остальных оценок нет, а часть могла закрыться. Перед выходом проверьте место по ссылке на карты. Кнопка с перечёркнутым глазом убирает место из подбора.';
   document.getElementById('credits').innerHTML = h;
 }
 function banner(){
@@ -1046,6 +1207,9 @@ function banner(){
   else b.innerHTML = '';
 }
 function init(){
+  const t = document.getElementById('today');
+  if(t){ const d = new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Moscow'}); t.textContent = d[0].toUpperCase()+d.slice(1)+'. Реальные места и события Москвы, ссылки на отзывы и афишу.'; }
+  paintIcons();
   if(DATA && DATA.metro) document.getElementById('metrolist').innerHTML = DATA.metro.map(m=>`<option value="${esc(m[0])}">`).join('');
   if(state.origin && state.origin.metro && !(DATA && DATA.metro && DATA.metro.length)) state.origin = null;
   drawControls(); banner(); credits();

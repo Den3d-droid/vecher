@@ -675,8 +675,7 @@ def apply_curated(places, today):
             continue
         else:
             matched += 1
-        if target["k"] not in ("restaurant", "cafe", "bar", "market"):
-            target["k"] = c["k"]
+        target["k"] = c["k"]      # тип из гида надёжнее, чем в OpenStreetMap
         target["g"] = sorted(set(target.get("g", []) + c["labels"]))
         target["gt"] = min(target.get("gt", 9), c["tier"])
         target["s"] = target.get("s", 0) + (15 if c["tier"] == 1 else 8)
