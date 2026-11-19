@@ -18,9 +18,9 @@
   --l1:rgba(255,45,85,.6); --l2:rgba(255,140,60,.4); --l3:rgba(205,55,200,.4); --l4:rgba(70,95,255,.42);
   --accent:#ff375f; --accent-soft:rgba(255,55,95,.2); --on-accent:#fff;
   --text:#fff; --muted:rgba(255,255,255,.66); --faint:rgba(255,255,255,.42);
-  --nav:rgba(255,255,255,.025); --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.11); --edge:rgba(255,255,255,.22); --edge-lo:rgba(255,255,255,.08); --sheen:.14;
+  --nav:rgba(255,255,255,0); --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.11); --edge:rgba(255,255,255,.22); --edge-lo:rgba(255,255,255,.08); --sheen:.14;
   --seg-bg:rgba(255,255,255,.08); --thumb:rgba(255,255,255,.24); --thumb-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 3px 12px rgba(0,0,0,.25);
-  --shadow:0 16px 44px rgba(5,4,25,.32); --scrim:rgba(8,6,25,.35); --solid:rgba(30,20,55,.94);
+  --shadow:0 16px 44px rgba(5,4,25,.32); --scrim:rgba(8,6,25,.35); --solid:rgba(30,20,55,.94); --shade:#06040f; --shade-a:.62;
   color-scheme:dark;
   --r-xl:30px; --r-l:24px; --r-m:18px;
   --spring:cubic-bezier(.34,1.45,.55,1); --ease:cubic-bezier(.2,.8,.2,1); }
@@ -28,17 +28,17 @@
   --l1:rgba(255,59,95,.36); --l2:rgba(255,159,90,.4); --l3:rgba(222,110,230,.3); --l4:rgba(110,140,255,.3);
   --accent:#f0244f; --accent-soft:rgba(240,36,79,.12); --on-accent:#fff;
   --text:#1c1022; --muted:rgba(28,16,34,.6); --faint:rgba(28,16,34,.4);
-  --nav:rgba(255,255,255,.14); --glass:rgba(255,255,255,.3); --glass-2:rgba(255,255,255,.55); --edge:rgba(255,255,255,.9); --edge-lo:rgba(60,20,60,.07); --sheen:.5;
+  --nav:rgba(255,255,255,.04); --glass:rgba(255,255,255,.3); --glass-2:rgba(255,255,255,.55); --edge:rgba(255,255,255,.9); --edge-lo:rgba(60,20,60,.07); --sheen:.5;
   --seg-bg:rgba(60,20,60,.06); --thumb:#fff; --thumb-shadow:0 2px 8px rgba(80,20,60,.14);
-  --shadow:0 14px 40px rgba(120,40,90,.1); --scrim:rgba(60,20,50,.15); --solid:rgba(255,255,255,.95);
+  --shadow:0 14px 40px rgba(120,40,90,.1); --scrim:rgba(60,20,50,.15); --solid:rgba(255,255,255,.95); --shade:#fbf3f8; --shade-a:.55;
   color-scheme:light; }
 @media (prefers-color-scheme: light){ :root[data-theme="system"]{ --base1:#fff4f6; --base2:#f4eefc;
   --l1:rgba(255,59,95,.36); --l2:rgba(255,159,90,.4); --l3:rgba(222,110,230,.3); --l4:rgba(110,140,255,.3);
   --accent:#f0244f; --accent-soft:rgba(240,36,79,.12); --on-accent:#fff;
   --text:#1c1022; --muted:rgba(28,16,34,.6); --faint:rgba(28,16,34,.4);
-  --nav:rgba(255,255,255,.14); --glass:rgba(255,255,255,.3); --glass-2:rgba(255,255,255,.55); --edge:rgba(255,255,255,.9); --edge-lo:rgba(60,20,60,.07); --sheen:.5;
+  --nav:rgba(255,255,255,.04); --glass:rgba(255,255,255,.3); --glass-2:rgba(255,255,255,.55); --edge:rgba(255,255,255,.9); --edge-lo:rgba(60,20,60,.07); --sheen:.5;
   --seg-bg:rgba(60,20,60,.06); --thumb:#fff; --thumb-shadow:0 2px 8px rgba(80,20,60,.14);
-  --shadow:0 14px 40px rgba(120,40,90,.1); --scrim:rgba(60,20,50,.15); --solid:rgba(255,255,255,.95);
+  --shadow:0 14px 40px rgba(120,40,90,.1); --scrim:rgba(60,20,50,.15); --solid:rgba(255,255,255,.95); --shade:#fbf3f8; --shade-a:.55;
   color-scheme:light; } }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
@@ -66,7 +66,8 @@ button{font:inherit;color:inherit}
 .tap{transition:transform .35s var(--spring), background-color .2s, color .2s, box-shadow .25s}
 .tap:active{transform:scale(.94);transition-duration:.12s}
 /* ---------- верхняя панель */
-.topnav{background:var(--nav)!important;-webkit-backdrop-filter:blur(12px) saturate(160%)!important;backdrop-filter:blur(12px) saturate(160%)!important;position:sticky;top:10px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 6px 16px;border-radius:999px;margin-bottom:28px}
+.topnav{background:var(--nav)!important;-webkit-backdrop-filter:blur(5px) saturate(140%)!important;backdrop-filter:blur(5px) saturate(140%)!important;box-shadow:inset 0 0 0 1px var(--edge-lo)!important;position:sticky;top:10px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 6px 16px;border-radius:999px;margin-bottom:28px}
+.topnav::before{display:none}
 .brand{display:flex;align-items:center;gap:9px;font-weight:650;letter-spacing:-.02em;font-size:16px;border:0;background:none;cursor:pointer}
 .brand i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft), 0 0 16px var(--accent)}
 .navbtns{display:flex;gap:2px;align-items:center}
@@ -165,10 +166,11 @@ button{font:inherit;color:inherit}
 .sechead h2{display:flex;align-items:center;gap:9px;font-size:22px;font-weight:660;letter-spacing:-.025em}
 .sechead h2 svg{width:21px;height:21px;color:var(--accent)}
 .sechead small{color:var(--muted);font-size:14px;font-weight:400;margin-left:2px}
-.lane{--ml:1;--mr:0;-webkit-mask-image:linear-gradient(to right, rgba(0,0,0,var(--ml)) 0, #000 36px, #000 calc(100% - 64px), rgba(0,0,0,var(--mr)) 100%);
-  mask-image:linear-gradient(to right, rgba(0,0,0,var(--ml)) 0, #000 36px, #000 calc(100% - 64px), rgba(0,0,0,var(--mr)) 100%);
-  margin-right:calc(-1 * max(18px, (100vw - 1080px)/2 + 18px)) !important;padding-right:40px !important;
-  display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 4px 14px;margin:0 -4px;scrollbar-width:none;overscroll-behavior-x:contain}
+.lane{--bleed:calc((100vw - min(100vw, 1080px)) / 2 + 18px);display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+  margin:-14px calc(-1 * var(--bleed)) -30px;padding:20px var(--bleed) 44px;scroll-padding:0 var(--bleed);scrollbar-width:none;overscroll-behavior-x:contain}
+/* эффект дальности: карточки у края уменьшаются и уходят в тень */
+.lane>*{scale:calc(1 - var(--d,0) * .12);will-change:scale}
+.lane>.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--shade);opacity:calc(var(--d,0) * var(--shade-a))}
 .lane::-webkit-scrollbar{display:none}
 .card{flex:0 0 300px;scroll-snap-align:start;display:flex;flex-direction:column;padding:18px;border-radius:var(--r-l);min-height:250px;cursor:pointer;
   transition:transform .35s var(--spring), box-shadow .3s}
@@ -246,6 +248,7 @@ button{font:inherit;color:inherit}
 @media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
 @media (max-width:600px){
   .wrap{padding:10px 12px 48px}
+  .lane{--bleed:12px}
   .pill .lbl,.brand span{display:none}
   .pill{padding:9px 10px}
   .quiz{margin-top:2vh}
@@ -1270,16 +1273,25 @@ function appendMore(k, lane, loud){
   const n0 = lists[k].length; lists[k] = lists[k].concat(add);
   const m = lane.querySelector('.more'), html = add.map((it,j)=>cardHtml(k,it,n0+j,true)).join('');
   if(m) m.insertAdjacentHTML('beforebegin', html); else lane.insertAdjacentHTML('beforeend', html);
+  laneEdgesSoon(lane);
   setTimeout(()=>loading.delete(k), 250);
 }
 function laneEdges(lane){
-  const max = lane.scrollWidth - lane.clientWidth;
-  lane.style.setProperty('--ml', lane.scrollLeft < 6 ? 1 : 0);
-  lane.style.setProperty('--mr', lane.scrollLeft > max - 6 ? 1 : 0);
+  const L = lane.getBoundingClientRect(), pad = parseFloat(getComputedStyle(lane).paddingLeft) - 2;
+  for(const c of lane.children){
+    const r = c.getBoundingClientRect(); let d = 0, o = 'center';
+    if(r.left < L.left + pad){ d = (L.left + pad - r.left) / r.width * 1.6; o = 'right center'; }
+    else if(r.right > L.right - pad){ d = (r.right - L.right + pad) / r.width * 1.6; o = 'left center'; }
+    d = Math.max(0, Math.min(1, d));
+    c.style.setProperty('--d', d.toFixed(3)); c.style.transformOrigin = o;
+  }
 }
+const laneRaf = new WeakMap();
+function laneEdgesSoon(lane){ if(laneRaf.get(lane)) return; laneRaf.set(lane, requestAnimationFrame(()=>{ laneRaf.delete(lane); laneEdges(lane); })); }
+addEventListener('resize', ()=>document.querySelectorAll('.lane').forEach(laneEdgesSoon));
 $('rbody').addEventListener('scroll', e=>{
   const lane = e.target; if(!lane.classList || !lane.classList.contains('lane')) return;
-  laneEdges(lane);
+  laneEdgesSoon(lane);
   const sec = lane.closest('[data-sec]'), k = sec && sec.dataset.sec;
   if(k && lane.querySelector('.more') && lane.scrollLeft + lane.clientWidth > lane.scrollWidth - 340) appendMore(k, lane, false);
 }, true);
