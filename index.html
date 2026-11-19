@@ -7,135 +7,155 @@
 <meta name="description" content="Собирает план на вечер из реальных мест и событий Москвы.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#10142b">
+<meta name="theme-color" content="#16080e">
+<script>
+  (function(){ var t='system'; try{ t=localStorage.getItem('evening-theme')||'system'; }catch(e){}
+    if(['system','light','dark'].indexOf(t)<0) t='system'; document.documentElement.setAttribute('data-theme', t); })();
+</script>
 <style>
-/* Вечер в Москве: сумерки за стеклом. Фон — огни города, всё управление — на стекле поверх них. */
-:root{
-  --ink:#10142b; --dusk:#2b2560; --amber:#ffb547; --rose:#ff5d7a; --teal:#38c7c0;
-  --text:#f6f4ff; --muted:rgba(246,244,255,.64); --faint:rgba(246,244,255,.38);
-  --glass:rgba(255,255,255,.075); --glass-2:rgba(255,255,255,.13); --glass-hi:rgba(255,255,255,.22);
-  --edge:rgba(255,255,255,.18); --edge-lo:rgba(255,255,255,.05);
-  --shadow:0 18px 50px rgba(5,6,22,.45);
-  --amber-ink:#2a1700;
-  --r-xl:34px; --r-l:26px; --r-m:18px; --r-s:12px;
+/* Вечер в Москве: красные огни города за стеклом. Темы: системная, светлая, тёмная (атрибут data-theme на <html>). */
+:root{ --ink:#16080e; --base1:#3d0d1e; --base2:#16080e;
+  --l1:rgba(255,52,82,.55); --l2:rgba(255,126,82,.38); --l3:rgba(150,40,120,.45); --l4:rgba(120,50,220,.32);
+  --accent:#ff3b55; --accent-2:#d9183a; --accent-soft:rgba(255,59,85,.18); --accent-line:rgba(255,59,85,.45); --on-accent:#fff;
+  --text:#fff3f4; --muted:rgba(255,243,244,.66); --faint:rgba(255,243,244,.4);
+  --glass:rgba(255,255,255,.07); --glass-2:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.2);
+  --edge:rgba(255,255,255,.18); --edge-lo:rgba(255,255,255,.06);
+  --seg-bg:rgba(0,0,0,.24); --thumb:rgba(255,255,255,.2); --thumb-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 2px 10px rgba(0,0,0,.25);
+  --shadow:0 18px 50px rgba(10,0,6,.5); --scrim:rgba(14,4,8,.4); --solid:rgba(40,14,24,.94);
   color-scheme:dark;
-}
-@media (prefers-color-scheme: light){
-  :root{
-    --ink:#e9eefb; --dusk:#c9d4f4; --text:#171a2e; --muted:rgba(23,26,46,.62); --faint:rgba(23,26,46,.4);
-    --glass:rgba(255,255,255,.46); --glass-2:rgba(255,255,255,.62); --glass-hi:rgba(255,255,255,.85);
-    --edge:rgba(255,255,255,.9); --edge-lo:rgba(23,26,46,.06); --shadow:0 18px 50px rgba(40,50,110,.16);
-    color-scheme:light;
-  }
-}
+  --r-xl:32px; --r-l:24px; --r-m:18px; --r-s:12px; }
+:root[data-theme="light"]{ --ink:#fbf0f1; --base1:#fff7f6; --base2:#f9e4e6;
+  --l1:rgba(255,90,110,.42); --l2:rgba(255,165,120,.42); --l3:rgba(235,120,170,.32); --l4:rgba(170,140,255,.3);
+  --accent:#e11d3f; --accent-2:#b5122f; --accent-soft:rgba(225,29,63,.1); --accent-line:rgba(225,29,63,.32); --on-accent:#fff;
+  --text:#2a0d15; --muted:rgba(42,13,21,.62); --faint:rgba(42,13,21,.42);
+  --glass:rgba(255,255,255,.5); --glass-2:rgba(255,255,255,.68); --glass-hi:#fff;
+  --edge:rgba(255,255,255,.95); --edge-lo:rgba(90,20,40,.08);
+  --seg-bg:rgba(90,20,40,.07); --thumb:#fff; --thumb-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 2px 8px rgba(120,20,50,.14);
+  --shadow:0 18px 50px rgba(150,40,70,.14); --scrim:rgba(80,20,40,.18); --solid:rgba(255,255,255,.95);
+  color-scheme:light; }
+@media (prefers-color-scheme: light){ :root[data-theme="system"]{ --ink:#fbf0f1; --base1:#fff7f6; --base2:#f9e4e6;
+  --l1:rgba(255,90,110,.42); --l2:rgba(255,165,120,.42); --l3:rgba(235,120,170,.32); --l4:rgba(170,140,255,.3);
+  --accent:#e11d3f; --accent-2:#b5122f; --accent-soft:rgba(225,29,63,.1); --accent-line:rgba(225,29,63,.32); --on-accent:#fff;
+  --text:#2a0d15; --muted:rgba(42,13,21,.62); --faint:rgba(42,13,21,.42);
+  --glass:rgba(255,255,255,.5); --glass-2:rgba(255,255,255,.68); --glass-hi:#fff;
+  --edge:rgba(255,255,255,.95); --edge-lo:rgba(90,20,40,.08);
+  --seg-bg:rgba(90,20,40,.07); --thumb:#fff; --thumb-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 2px 8px rgba(120,20,50,.14);
+  --shadow:0 18px 50px rgba(150,40,70,.14); --scrim:rgba(80,20,40,.18); --solid:rgba(255,255,255,.95);
+  color-scheme:light; } }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Onest",system-ui,sans-serif;color:var(--text);background:var(--ink);min-height:100vh;
-  line-height:1.5;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-/* огни города за стеклом */
-.lights{position:fixed;inset:-10vmax;z-index:-1;pointer-events:none;
-  background:
-   radial-gradient(38vmax 30vmax at 12% 18%, rgba(255,181,71,.55), transparent 62%),
-   radial-gradient(30vmax 26vmax at 88% 12%, rgba(255,93,122,.42), transparent 60%),
-   radial-gradient(42vmax 34vmax at 78% 78%, rgba(56,199,192,.32), transparent 62%),
-   radial-gradient(36vmax 30vmax at 22% 88%, rgba(124,92,255,.45), transparent 60%),
-   linear-gradient(170deg, var(--dusk), var(--ink) 70%);}
-@media (prefers-color-scheme: light){
-  .lights{background:
-   radial-gradient(38vmax 30vmax at 12% 18%, rgba(255,190,110,.7), transparent 62%),
-   radial-gradient(30vmax 26vmax at 88% 12%, rgba(255,140,165,.55), transparent 60%),
-   radial-gradient(42vmax 34vmax at 78% 78%, rgba(110,220,210,.5), transparent 62%),
-   radial-gradient(36vmax 30vmax at 22% 88%, rgba(150,135,255,.5), transparent 60%),
-   linear-gradient(170deg, #f3f6ff, #dfe6fb 70%);}
-}
-/* стекло: размытие фона, светлая кромка сверху, блик */
+  line-height:1.5;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden;transition:background .3s}
+.lights{position:fixed;inset:-10vmax;z-index:-1;pointer-events:none;background:
+   radial-gradient(38vmax 30vmax at 10% 14%, var(--l1), transparent 62%),
+   radial-gradient(30vmax 26vmax at 90% 10%, var(--l2), transparent 60%),
+   radial-gradient(42vmax 34vmax at 82% 80%, var(--l3), transparent 62%),
+   radial-gradient(36vmax 30vmax at 18% 90%, var(--l4), transparent 60%),
+   linear-gradient(170deg, var(--base1), var(--base2) 70%);}
 .glass{position:relative;background:var(--glass);border-radius:var(--r-l);
-  -webkit-backdrop-filter:blur(26px) saturate(185%);backdrop-filter:blur(26px) saturate(185%);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
   box-shadow:inset 0 1px 0 var(--edge), inset 0 0 0 1px var(--edge-lo), var(--shadow)}
 .glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,.06))}
+  background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 38%, rgba(255,255,255,0) 72%, rgba(255,255,255,.05))}
 .wrap{max-width:1040px;margin:0 auto;padding:18px 18px 64px}
-.topnav{position:sticky;top:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 18px;border-radius:999px;margin-bottom:44px}
-.brand{font-weight:650;letter-spacing:-.02em;font-size:17px}
-.navbtns{display:flex;gap:6px}
+/* верхняя панель */
+.topnav{position:sticky;top:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 7px 7px 18px;border-radius:999px;margin-bottom:44px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:650;letter-spacing:-.02em;font-size:17px}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft), 0 0 18px var(--accent)}
+.navbtns{display:flex;gap:4px;align-items:center}
 .pill{display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;font:inherit;font-size:15px;color:var(--text);
   background:transparent;padding:9px 14px;border-radius:999px;transition:background .2s}
 .pill:hover{background:var(--glass-2)}
 .pill svg{width:18px;height:18px;flex:none}
-.count{font-variant-numeric:tabular-nums;color:var(--muted)}
+.count{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:650}
+.count:empty{display:none}
+.theme{display:inline-flex;padding:3px;gap:2px;border-radius:999px;background:var(--seg-bg);margin-right:4px}
+.theme button{width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:background .2s,color .2s}
+.theme button svg{width:16px;height:16px}
+.theme button[aria-pressed="true"]{background:var(--thumb);color:var(--text);box-shadow:var(--thumb-shadow)}
 header{margin:0 4px 26px}
-h1{font-weight:650;font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-.045em;max-width:12ch}
-.today{margin-top:14px;color:var(--muted);font-size:17px}
-.sub{color:var(--muted);max-width:56ch;margin-top:6px}
-.controls{padding:22px 22px 12px;border-radius:var(--r-xl)}
+h1{font-weight:680;font-size:clamp(40px,7vw,78px);line-height:.98;letter-spacing:-.05em;max-width:12ch}
+.today{margin-top:14px;color:var(--muted);font-size:17px;max-width:56ch}
+/* панель параметров */
+.controls{padding:22px 22px 14px;border-radius:var(--r-xl)}
 .row{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;margin-bottom:12px}
-.row[hidden]{display:none}
 .label{color:var(--muted);font-size:14px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
-/* одиночный выбор — сегментированный переключатель */
-.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:14px;background:rgba(0,0,0,.18);box-shadow:inset 0 1px 2px rgba(0,0,0,.18)}
-@media (prefers-color-scheme: light){ .seg{background:rgba(23,26,46,.07)} }
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:14px;background:var(--seg-bg);box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
 .chip{border:0;background:transparent;color:var(--text);padding:7px 13px;border-radius:11px;font:inherit;font-size:14px;cursor:pointer;
   transition:background .2s, box-shadow .2s, color .2s;white-space:nowrap}
 .chip:hover{background:var(--glass)}
-.chip[aria-pressed="true"]{background:var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 2px 10px rgba(0,0,0,.18);font-weight:600}
-@media (prefers-color-scheme: light){ .chip[aria-pressed="true"]{background:#fff;box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 2px 8px rgba(40,50,110,.14)} }
-/* множественный выбор — отдельные капсулы */
+.chip[aria-pressed="true"]{background:var(--thumb);box-shadow:var(--thumb-shadow);font-weight:600}
 .multi .chip{border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 1px var(--edge-lo)}
-.multi .chip[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink);box-shadow:none}
-.chip.toggle{border-radius:999px;box-shadow:inset 0 0 0 1px var(--edge)}
-.chip.toggle[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink);box-shadow:none}
-.chip svg{width:15px;height:15px;vertical-align:-2px;margin-right:4px}
+.multi .chip[aria-pressed="true"],.chip.toggle[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);box-shadow:0 4px 14px var(--accent-soft)}
+.chip.toggle{border-radius:999px;box-shadow:inset 0 0 0 1px var(--edge-lo);background:var(--glass)}
+.chip svg{width:15px;height:15px;vertical-align:-2px;margin-right:5px}
 .metro{border:0;background:var(--glass);box-shadow:inset 0 0 0 1px var(--edge-lo);color:var(--text);padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;width:200px;max-width:100%}
 .metro::placeholder{color:var(--faint)}
 .where{grid-column:2;color:var(--muted);font-size:13px;margin-top:-4px}
-.go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:10px 0 8px;border:0;cursor:pointer;
-  font:inherit;font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--amber-ink);padding:17px 24px;border-radius:20px;
-  background:linear-gradient(180deg, #ffd27d, var(--amber));box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 10px 30px rgba(255,181,71,.35);transition:transform .15s}
+/* главная кнопка */
+.go{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:12px 0 6px;border:0;cursor:pointer;overflow:hidden;
+  font:inherit;font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--on-accent);padding:18px 24px;border-radius:22px;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent) 55%, var(--accent-2));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 0 rgba(0,0,0,.12), 0 12px 32px var(--accent-soft), 0 2px 6px rgba(0,0,0,.15);transition:transform .15s, box-shadow .2s}
+.go::after{content:"";position:absolute;inset:0 0 50% 0;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0));pointer-events:none}
+.go:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 0 rgba(0,0,0,.12), 0 16px 40px var(--accent-line), 0 2px 6px rgba(0,0,0,.15)}
 .go:active{transform:scale(.985)}
 .go svg{width:20px;height:20px}
+/* план */
 #out{margin-top:26px}
 .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 .card{padding:20px;display:flex;flex-direction:column;min-width:0;grid-column:span 3;border-radius:var(--r-l)}
 .card.lead{grid-column:span 4;grid-row:span 2;padding:26px}
 .card.side{grid-column:span 2}
 .card.wide{grid-column:1/-1}
-.card.locked{box-shadow:inset 0 0 0 2px var(--amber), var(--shadow)}
+.card.locked{box-shadow:inset 0 0 0 2px var(--accent), var(--shadow)}
 .ctop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-.ctitle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
-.ctitle svg{width:17px;height:17px}
-.btns{display:flex;gap:4px}
-.ib{width:34px;height:34px;border-radius:50%;border:0;background:var(--glass);color:var(--text);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.ctitle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;min-width:0}
+.ctitle svg{width:17px;height:17px;flex:none;color:var(--accent)}
+/* действия карточки: группа иконок в одной капсуле + кнопка «Другой» */
+.acts{display:flex;align-items:center;gap:6px;flex:none}
+.tools{display:inline-flex;padding:3px;border-radius:999px;background:var(--seg-bg)}
+.ib{width:32px;height:32px;border-radius:50%;border:0;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:background .2s,color .2s}
 .ib svg{width:17px;height:17px}
-.ib:hover{background:var(--glass-2)}
-.ib[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink)}
-.ib.fav[aria-pressed="true"]{background:var(--rose);color:#fff}
-.main{font-weight:650;font-size:23px;line-height:1.2;letter-spacing:-.02em;margin-bottom:6px;overflow-wrap:anywhere}
+.ib:hover{background:var(--glass-2);color:var(--text)}
+.ib[aria-pressed="true"]{background:var(--thumb);color:var(--accent);box-shadow:var(--thumb-shadow)}
+.ib.fav[aria-pressed="true"]{color:var(--accent)}
+.roll{display:inline-flex;align-items:center;gap:6px;border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:600;color:var(--accent);
+  background:var(--accent-soft);padding:8px 13px;border-radius:999px;transition:background .2s}
+.roll:hover{background:var(--accent-line);color:var(--on-accent)}
+.roll svg{width:16px;height:16px}
+.side .roll .lbl{display:none}
+.side .roll{padding:8px 10px}
+.ctitle{white-space:nowrap}
+.roll:active svg{transform:rotate(180deg);transition:transform .3s}
+.main{font-weight:660;font-size:23px;line-height:1.2;letter-spacing:-.02em;margin-bottom:6px;overflow-wrap:anywhere}
 .lead .main{font-size:clamp(28px,3.4vw,40px);letter-spacing:-.035em}
 .wide .main{font-size:21px}
 .note{color:var(--muted);font-size:15px}
-.guide{display:inline-flex;align-items:flex-start;gap:6px;font-size:13px;line-height:1.35;color:var(--text);background:rgba(255,181,71,.18);
-  box-shadow:inset 0 0 0 1px rgba(255,181,71,.4);border-radius:12px;padding:6px 10px;margin-bottom:12px;align-self:flex-start}
-.guide svg{width:14px;height:14px;color:var(--amber);flex:none;margin-top:1px}
+.guide{display:inline-flex;align-items:flex-start;gap:7px;font-size:13px;line-height:1.35;color:var(--text);background:var(--accent-soft);
+  box-shadow:inset 0 0 0 1px var(--accent-line);border-radius:12px;padding:6px 10px;margin-bottom:12px;align-self:flex-start}
+.guide svg{width:14px;height:14px;color:var(--accent);flex:none;margin-top:1px}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .tag{font-size:13px;color:var(--muted);background:var(--glass);border-radius:999px;padding:3px 10px}
 .meta{font-size:15px;margin-top:12px;display:grid;gap:4px}
 .meta span{color:var(--muted)}
 .links{margin-top:auto;padding-top:16px;display:flex;flex-wrap:wrap;gap:8px}
-.links a{text-decoration:none;font-size:14px;font-weight:600;padding:9px 14px;border-radius:999px;color:var(--amber-ink);background:var(--amber)}
+.links a{display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-size:14px;font-weight:600;padding:9px 15px;border-radius:999px;
+  color:var(--on-accent);background:var(--accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 14px var(--accent-soft)}
 .links a.sec{background:var(--glass);color:var(--text);font-weight:500;box-shadow:inset 0 0 0 1px var(--edge-lo)}
-.links a:hover{filter:brightness(1.06)}
-.foot{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
-.ghost{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--glass);color:var(--text);padding:10px 16px;border-radius:999px;font:inherit;font-size:15px;cursor:pointer;
-  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 var(--edge)}
+.links a:hover{filter:brightness(1.07)}
+.links a svg{width:15px;height:15px}
+/* нижняя панель */
+.foot{display:inline-flex;flex-wrap:wrap;gap:2px;margin-top:18px;padding:5px;border-radius:999px}
+.ghost{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--text);padding:9px 15px;border-radius:999px;font:inherit;font-size:15px;cursor:pointer;transition:background .2s}
 .ghost:hover{background:var(--glass-2)}
-.ghost svg{width:17px;height:17px}
+.ghost svg{width:17px;height:17px;color:var(--accent)}
 .empty{color:var(--muted);padding:6px 4px}
 .banner{padding:14px 18px;margin-bottom:14px;font-size:15px;border-radius:var(--r-m)}
 .credits{margin-top:56px;color:var(--faint);font-size:13px;line-height:1.7;max-width:70ch}
 .credits a{color:var(--muted)}
-/* появление плана: один раз, лесенкой */
 .grid.enter .card{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
 .grid.enter .card:nth-child(2){animation-delay:.05s}.grid.enter .card:nth-child(3){animation-delay:.1s}
 .grid.enter .card:nth-child(4){animation-delay:.15s}.grid.enter .card:nth-child(5){animation-delay:.2s}
@@ -144,31 +164,29 @@ h1{font-weight:650;font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 /* окно */
 .modal{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;justify-content:center;padding:6vh 14px;overflow:auto;
-  background:rgba(8,10,28,.35);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.modal[hidden]{display:none}
+  background:var(--scrim);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .sheet{width:100%;max-width:640px;padding:24px;border-radius:var(--r-xl);background:var(--glass-2)}
 .sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.sheet h2{font-weight:650;font-size:28px;letter-spacing:-.03em}
+.sheet h2{font-weight:660;font-size:28px;letter-spacing:-.03em}
 .sheet h3{font-size:17px;font-weight:650;margin:22px 0 8px}
+.sheet .ib{background:var(--glass)}
 .tabs{display:inline-flex;margin-bottom:12px}
 .fitem{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:12px 0;border-top:1px solid var(--edge-lo)}
 .fitem .ft{font-weight:600}.fitem .fs{color:var(--muted);font-size:14px;white-space:pre-line}
-.fitem a{color:var(--text);font-size:14px}
+.fitem a{color:var(--accent);font-size:14px}
 .field{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
 .field input,.field textarea{background:var(--glass);border:0;box-shadow:inset 0 0 0 1px var(--edge-lo);color:var(--text);border-radius:12px;padding:10px 13px;font:inherit;font-size:15px}
 .field input{flex:1;min-width:180px}
 .field textarea{width:100%;min-height:72px;font-size:12px}
 .field .chip{background:var(--glass);border-radius:999px;box-shadow:inset 0 0 0 1px var(--edge-lo)}
+.field .chip.primary{background:var(--accent);color:var(--on-accent);box-shadow:none;font-weight:600}
 .muted{color:var(--muted);font-size:15px}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);padding:11px 18px;border-radius:999px;font-weight:600;font-size:15px;
   color:var(--text);background:var(--glass-2);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
   box-shadow:inset 0 1px 0 var(--edge), var(--shadow);opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
-:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .glass,.sheet{background:rgba(30,32,64,.92)}
-  @media (prefers-color-scheme: light){ .glass,.sheet{background:rgba(255,255,255,.94)} }
-}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .glass,.sheet,.toast{background:var(--solid)} }
 @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
 @media (max-width:820px){
   .grid{grid-template-columns:1fr 1fr}
@@ -177,15 +195,19 @@ h1{font-weight:650;font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-
 @media (max-width:600px){
   .wrap{padding:10px 12px 48px}
   .topnav{margin-bottom:30px;padding-left:14px}
-  .pill .lbl{display:none}
+  .pill .lbl,.brand span{display:none}
+  .pill{padding:9px 10px}
   .row{grid-template-columns:1fr;gap:6px}
   .where{grid-column:1}
-  .controls{padding:16px 14px 6px}
+  .controls{padding:16px 14px 8px}
   .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:2px 14px}
   .chips::-webkit-scrollbar{display:none}
   .seg{flex-wrap:nowrap}
   .grid{grid-template-columns:1fr}
   .card,.card.side,.card.lead,.card.wide{grid-column:1/-1}
+  .roll .lbl{display:none}
+  .roll{padding:8px 10px}
+  .foot{border-radius:22px}
 }
 </style>
 </head>
@@ -193,8 +215,13 @@ h1{font-weight:650;font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-
 <div class="lights" aria-hidden="true"></div>
 <div class="wrap">
   <nav class="topnav glass">
-    <span class="brand">Вечер в Москве</span>
+    <span class="brand"><i aria-hidden="true"></i><span>Вечер в Москве</span></span>
     <span class="navbtns">
+      <span class="theme" role="group" aria-label="Тема оформления">
+        <button data-theme-set="light" title="Светлая тема" aria-label="Светлая тема"><span class="ico" data-i="sun"></span></button>
+        <button data-theme-set="system" title="Как в системе" aria-label="Как в системе"><span class="ico" data-i="auto"></span></button>
+        <button data-theme-set="dark" title="Тёмная тема" aria-label="Тёмная тема"><span class="ico" data-i="moon"></span></button>
+      </span>
       <button class="pill" id="openFav" aria-label="Избранное"><span class="ico" data-i="heart"></span><span class="lbl">Избранное</span> <span class="count" id="favCount"></span></button>
       <button class="pill" id="openSet" aria-label="Настройки"><span class="ico" data-i="gear"></span><span class="lbl">Настройки</span></button>
       <button class="pill" id="openAcc" hidden><span class="ico" data-i="user"></span><span class="lbl" id="accLbl">Войти</span></button>
@@ -213,7 +240,7 @@ h1{font-weight:650;font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-
 
   <section id="out"><p class="empty">Выберите, с кем и в каком настроении, и нажмите «Собрать вечер». Понравившиеся пункты можно закрепить, остальные — заменить.</p></section>
 
-  <div class="foot" id="foot" hidden>
+  <div class="foot glass" id="foot" hidden>
     <button class="ghost" id="savePlan"><span class="ico" data-i="bookmark"></span>Сохранить вечер</button>
     <button class="ghost" id="copy"><span class="ico" data-i="copy"></span>Скопировать план</button>
     <button class="ghost" id="reset"><span class="ico" data-i="unlock"></span>Снять все замки</button>
@@ -256,10 +283,24 @@ const IC = {
   pan:'<circle cx="10" cy="13" r="6"/><path d="M16 13h6"/>',
   dice:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/>',
   quote:'<path d="M7 7h4v4c0 3-2 5-4 6M14 7h4v4c0 3-2 5-4 6"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  auto:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>',
+  map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  ext:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+  play:'<path d="M7 4v16l13-8z" fill="currentColor" stroke="none"/>',
   locate:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/>',
 };
 const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`;
 const SLOT_ICON = {go:'pin',event:'ticket',eat:'fork',music:'music',rule:'quote',watch:'film',food:'pan',do:'dice'};
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('evening-theme', t); }catch(e){}
+  document.querySelectorAll('[data-theme-set]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.themeSet===t));
+  const dark = t==='dark' || (t==='system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.content = dark ? '#16080e' : '#fbf0f1';
+}
+document.addEventListener('click', e=>{ const b = e.target.closest('[data-theme-set]'); if(b) setTheme(b.dataset.themeSet); });
 function paintIcons(root){ (root||document).querySelectorAll('.ico[data-i]').forEach(e=>{ e.outerHTML = icon(e.dataset.i); }); }
 // =====================================================================
 //  Параметры вечера
@@ -642,6 +683,7 @@ function dist(a,b,c,d){ const p=Math.PI/180, x=(d-b)*p*Math.cos((a+c)/2*p), y=(c
 function radiusKm(){ return state.origin ? RADII.find(r=>r[0]===state.radius)[2] : 1e9; }
 const seen = {}; // чтобы при перекручивании варианты не повторялись
 
+const KIDS_EV = /дошкол|малыш|для детей|детск|школьник|юных|юного|родител/i;
 const KIDS_RE = /детск|для детей|юношеск|школ|кукольн|юного|малыш/i;
 // выбирает место: сначала категорию по весам, потом одно из подходящих в ней.
 // opt.maxPc — потолок по тратам, opt.cuisine — подстроки кухни, opt.exclude — что точно не показывать
@@ -713,7 +755,7 @@ function pickEvent(anchor, maxKm){
     if(state.budget==='free' && !e.fr) continue;
     if(state.budget==='low' && !e.fr && e.pf && e.pf>1500) continue;
     if(state.who==='family' && ((e.ag||0)>=16 || e.k.includes('party'))) continue;
-    if(state.who!=='family' && !ws.events.has('kids') && e.k.every(k=>k==='kids')) continue;
+    if(state.who!=='family' && !ws.events.has('kids') && (e.k.every(k=>k==='kids') || KIDS_EV.test(e.t))) continue;
     if(ws.on && !e.k.some(k=>ws.events.has(k))) continue;
     if(anchor && maxKm<1e8){ if(e.la==null || dist(anchor.la,anchor.lo,e.la,e.lo)>maxKm) continue; }
     let w = e.k.some(k=>mood.includes(k)) ? 3 : (e.k[0]==='other' ? .15 : .3);
@@ -752,7 +794,7 @@ function afishaLink(){
   const period = state.day==='weekend' ? Math.max(1, Math.round((win[1]-from)/86400)) : 1;
   const [cat, label] = afishaCat();
   const when = state.day==='today' ? 'на сегодня' : state.day==='tomorrow' ? 'на завтра' : 'на выходные';
-  return {url:`https://afisha.yandex.ru/moscow/${cat}?date=${date}&period=${period}`, text:`${label[0].toUpperCase()+label.slice(1)} ${when} на Яндекс Афише`};
+  return {url:`https://afisha.yandex.ru/moscow/${cat}?date=${date}&period=${period}`, text:`Ещё ${label} на Яндекс Афише`, when};
 }
 
 // =====================================================================
@@ -862,7 +904,7 @@ function placeHtml(k, p, isFar){
   const a = anchorFor(k);
   if(a && a!==p){ const d = dist(a.la,a.lo,p.la,p.lo);
     meta.push(`<div><span>${k==='eat'&&a!==state.origin?'От первого места':'От вас'}:</span> ${kmText(d)}</div>`); }
-  const links = [`<a href="${esc(yandex(p))}" target="_blank" rel="noopener">Отзывы на Яндекс Картах</a>`];
+  const links = [`<a href="${esc(yandex(p))}" target="_blank" rel="noopener">${icon('map')}Отзывы на Яндекс Картах</a>`];
   if(safeUrl(p.w)) links.push(`<a class="sec" href="${esc(p.w)}" target="_blank" rel="noopener">Сайт</a>`);
   const far = (k==='go' && isFar) ? '<div class="note" style="margin-top:6px">Рядом ничего подходящего не нашлось, поэтому вариант подальше.</div>' : '';
   const guide = p.g ? `<div class="guide">${icon('star')}<span>${p.g.map(esc).join('<br>')}</span></div>` : '';
@@ -879,18 +921,18 @@ function eventHtml(c){
   if(state.origin && e.la!=null) meta.push(`<div><span>От вас:</span> ${kmText(dist(state.origin.la,state.origin.lo,e.la,e.lo))}</div>`);
   return `<div class="tags"><span class="tag">${esc(kind)}</span>${e.ag?`<span class="tag">${e.ag}+</span>`:''}</div>
     <div class="main">${esc(e.t)}</div><div class="meta">${meta.join('')}</div>
-    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">Подробнее на mos.ru</a>`:''}${afishaBtn()}</div>`;
+    <div class="links">${safeUrl(e.u)?`<a href="${esc(e.u)}" target="_blank" rel="noopener">${icon('ticket')}Подробнее на mos.ru</a>`:''}${afishaBtn()}</div>`;
 }
 function ideaLinks(k, it){
-  const L = (href, text, sec) => `<a${sec?' class="sec"':''} href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+  const L = (href, text, sec) => `<a${sec?' class="sec"':''} href="${esc(href)}" target="_blank" rel="noopener">${text}</a>`;
   if(k==='music'){
     const q = encodeURIComponent(it.q || it.t);
-    return `<div class="links">${L('https://music.yandex.ru/search?text='+q,'Слушать в Яндекс Музыке')}${L('https://vk.com/audio?q='+q,'VK Музыка',1)}${L('https://www.youtube.com/results?search_query='+q+'+playlist','YouTube',1)}</div>`;
+    return `<div class="links">${L('https://music.yandex.ru/search?text='+q,icon('play')+'Слушать в Яндекс Музыке')}${L('https://vk.com/audio?q='+q,'VK Музыка',1)}${L('https://www.youtube.com/results?search_query='+q+'+playlist','YouTube',1)}</div>`;
   }
   if(k==='watch'){
     const name = it.t.replace(/^Сериал\s*/,'').replace(/[«»]/g,'').replace(/\s*\(\d{4}\).*$/,'').replace(/,.*$/,'');
     const q = encodeURIComponent(name);
-    return `<div class="links">${L('https://www.kinopoisk.ru/index.php?kp_query='+q,'Найти на Кинопоиске')}</div>`;
+    return `<div class="links">${L('https://www.kinopoisk.ru/index.php?kp_query='+q,icon('play')+'Найти на Кинопоиске')}</div>`;
   }
   if(k==='food') return `<div class="links">${L('https://eda.yandex.ru/moscow','Заказать на Яндекс Еде',1)}</div>`;
   return '';
@@ -909,11 +951,13 @@ function render(anim){
     const fav = isFav(itemOf(k));
     return `<div class="card glass${size}${locks[k]?' locked':''}${anim==='swap'?' swap':''}" data-k="${k}">
       <div class="ctop"><span class="ctitle">${icon(SLOT_ICON[k]||'spark')}${title}</span>
-        <span class="btns">
+        <span class="acts">
+          <span class="tools">
           ${it.type!=='none'?`<button class="ib fav" data-act="fav" aria-pressed="${fav}" title="${fav?'Убрать из избранного':'В избранное'}" aria-label="${fav?'Убрать из избранного':'В избранное'}">${icon(fav?'heartf':'heart')}</button>`:''}
+          <button class="ib" data-act="lock" aria-pressed="${!!locks[k]}" title="${locks[k]?'Открепить':'Закрепить, чтобы не менялось'}" aria-label="Закрепить">${icon(locks[k]?'lock':'unlock')}</button>
           ${it.type==='place'?`<button class="ib" data-act="hide" title="Больше не предлагать" aria-label="Больше не предлагать это место">${icon('eyeoff')}</button>`:''}
-          <button class="ib" data-act="lock" aria-pressed="${!!locks[k]}" title="${locks[k]?'Открепить':'Закрепить'}" aria-label="Закрепить">${icon(locks[k]?'lock':'unlock')}</button>
-          <button class="ib" data-act="roll" title="Другой вариант" aria-label="Другой вариант">${icon('shuffle')}</button>
+          </span>
+          <button class="roll" data-act="roll" title="Другой вариант" aria-label="Другой вариант">${icon('shuffle')}<span class="lbl">Другой</span></button>
         </span></div>${body}</div>`;
   }).join('')+'</div>';
   document.getElementById('foot').hidden = false;
@@ -1089,6 +1133,8 @@ document.getElementById('mBody').addEventListener('click', e=>{
 function drawSettings(){
   const hasMetro = DATA && DATA.metro && DATA.metro.length;
   openModal('Настройки', `
+    <h3>Оформление</h3>
+    <div class="field"><span class="seg">${[['system','Как в системе'],['light','Светлая'],['dark','Тёмная']].map(t=>`<button class="chip" data-theme-set="${t[0]}" aria-pressed="${(document.documentElement.getAttribute('data-theme')||'system')===t[0]}">${t[1]}</button>`).join('')}</span></div>
     <h3>Аккаунт</h3>
     ${accountHtml()}
     <p class="muted" style="margin-top:10px">Выбранные параметры вечера (компания, настроение, бюджет, кухня и так далее) запоминаются сами.</p>
@@ -1183,7 +1229,7 @@ function accountHtml(){
     <div class="field"><button class="chip" data-set="logout">Выйти</button></div>`;
   return `<p class="muted">Войдите, чтобы избранное и настройки были на всех ваших устройствах. Всё, что уже сохранено в этом браузере, перенесётся в аккаунт.</p>
     <div class="field"><input id="accEmail" type="email" placeholder="почта" autocomplete="email"><input id="accPass" type="password" placeholder="пароль, от 6 символов" autocomplete="current-password"></div>
-    <div class="field"><button class="chip" data-set="login">Войти</button><button class="chip" data-set="signup">Зарегистрироваться</button><button class="chip" data-set="google">Войти через Google</button><button class="chip" data-set="resetpass">Забыли пароль?</button></div>`;
+    <div class="field"><button class="chip primary" data-set="login">Войти</button><button class="chip" data-set="signup">Зарегистрироваться</button><button class="chip" data-set="google">Войти через Google</button><button class="chip" data-set="resetpass">Забыли пароль?</button></div>`;
 }
 
 let toastTimer;
@@ -1209,7 +1255,7 @@ function banner(){
 function init(){
   const t = document.getElementById('today');
   if(t){ const d = new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Moscow'}); t.textContent = d[0].toUpperCase()+d.slice(1)+'. Реальные места и события Москвы, ссылки на отзывы и афишу.'; }
-  paintIcons();
+  paintIcons(); setTheme(document.documentElement.getAttribute('data-theme')||'system');
   if(DATA && DATA.metro) document.getElementById('metrolist').innerHTML = DATA.metro.map(m=>`<option value="${esc(m[0])}">`).join('');
   if(state.origin && state.origin.metro && !(DATA && DATA.metro && DATA.metro.length)) state.origin = null;
   drawControls(); banner(); credits();
