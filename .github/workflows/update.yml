@@ -30,6 +30,7 @@ jobs:
       - name: Собрать места и события
         env:
           FULL: ${{ github.event_name != 'schedule' }}
+          KINOPOISK_KEY: ${{ secrets.KINOPOISK_KEY }}
         run: python scripts/update_data.py
 
       - name: Сохранить базу в репозитории

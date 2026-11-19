@@ -55,12 +55,14 @@ def warn(msg):
 
 
 # ---------------------------------------------------------------- сеть
-def http_json(url, post=None, timeout=240, tries=3):
+def http_json(url, post=None, timeout=240, tries=3, headers=None):
     last = None
     for attempt in range(tries):
         try:
             data = urllib.parse.urlencode(post).encode() if post else None
-            req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, "Accept": "application/json"})
+            hdr = {"User-Agent": UA, "Accept": "application/json"}
+            hdr.update(headers or {})
+            req = urllib.request.Request(url, data=data, headers=hdr)
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
@@ -696,6 +698,43 @@ def apply_curated(places, today):
     return places
 
 
+# ---------------------------------------------------------------- фильмы в прокате (Кинопоиск, неофициальный API)
+KP_URL = "https://kinopoiskapiunofficial.tech/api/v2.2/films/premieres"
+MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
+
+
+def fetch_films():
+    """Фильмы, которые вышли в российский прокат за последние 5 недель или выйдут в ближайшие 10 дней."""
+    key = os.environ.get("KINOPOISK_KEY", "").strip()
+    if not key:
+        log("Кино: ключ KINOPOISK_KEY не задан, пропускаю")
+        return None
+    today = datetime.date.today()
+    lo, hi = today - datetime.timedelta(days=35), today + datetime.timedelta(days=10)
+    months = sorted({(lo.year, lo.month), (today.year, today.month), (hi.year, hi.month)})
+    out, seen_ids = [], set()
+    for y, m in months:
+        res = http_json(KP_URL + "?" + urllib.parse.urlencode({"year": y, "month": MONTHS[m - 1]}),
+                        timeout=60, headers={"X-API-KEY": key})
+        for f in res.get("items") or []:
+            fid, title = f.get("kinopoiskId"), (f.get("nameRu") or f.get("nameEn") or "").strip()
+            try:
+                d = datetime.date.fromisoformat(str(f.get("premiereRu"))[:10])
+            except ValueError:
+                continue
+            if not fid or not title or fid in seen_ids or not (lo <= d <= hi):
+                continue
+            seen_ids.add(fid)
+            out.append({"id": fid, "t": title[:90], "y": f.get("year"), "pr": d.isoformat(),
+                        "g": [g.get("genre") for g in (f.get("genres") or []) if g.get("genre")][:3],
+                        "c": [c.get("country") for c in (f.get("countries") or []) if c.get("country")][:2],
+                        "d": f.get("duration")})
+        time.sleep(0.5)
+    out.sort(key=lambda f: f["pr"], reverse=True)
+    log("Кино: фильмов в прокате %d" % len(out))
+    return out
+
+
 # ---------------------------------------------------------------- сборка
 def finalize(places, metro):
     places = [p for p in places if not p.pop("_ch", None)]   # сети без отметок в гидах убираем
@@ -756,6 +795,14 @@ def main():
         # оставляем прежние события, которые ещё не прошли
         events = [e for e in (old.get("events") or []) if any(d[1] >= now for d in e.get("d", []))]
 
+    films = None
+    try:
+        films = fetch_films()
+    except Exception as e:
+        warn("Кинопоиск недоступен: %s" % e)
+    if films is None:
+        films = old.get("films") or []
+
     if osm_ok:
         places = apply_curated(places, datetime.date.today())
         final = finalize(places, metro)
@@ -776,7 +823,7 @@ def main():
     data = {
         "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "demo": demo, "notes": notes, "counts": counts,
-        "metro": metro, "places": final, "events": events,
+        "metro": metro, "places": final, "events": events, "films": films,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
